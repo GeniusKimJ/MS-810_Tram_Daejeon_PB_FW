@@ -24,12 +24,12 @@
 #define ADC_REF_MV        	(3300.0f)
 #define ADC_15BIT_MAX     	(32767.0f)
 
-#define ADC_LSB_15BIT_MV  	(ADC_REF_MV / ADC_15BIT_MAX)
+#define ADC_LSB_15BIT_MV  	(ADC_REF_MV / ADC_15BIT_MAX)	// 3300.0 / 32767.0
 
 
 //Int Power Supply
-#define AUX33_GAIN        	(0.362987152f)
-#define CONST_AUX33_15BIT 	(ADC_LSB_15BIT_MV / AUX33_GAIN)	// [mV / count]
+#define AUX3_GAIN        	(0.362987152f)
+#define CONST_AUX33_15BIT 	(ADC_LSB_15BIT_MV / AUX3_GAIN)	// [mV / count]
 
 #define AUX5_GAIN         	(0.315245827f)
 #define CONST_AUX5_15BIT  	(ADC_LSB_15BIT_MV / AUX5_GAIN)	// [mV / count]
@@ -50,13 +50,13 @@
 
 #define HV_DIV_RATIO		((HV_R_HIGH + HV_R_LOW) / HV_R_LOW) //38.6
 
-#define HV_GAIN_CAL_CPV        (0.754415858f)
+#define HV_GAIN_CAL_CPV     (0.754415858f)
 #define CONST_CPV_15BIT  	(ADC_LSB_15BIT_MV / HV_GAIN_CAL_CPV)	// [mV / count]
 
-#define HV_GAIN_CAL_VPV        (0.747386917f)
+#define HV_GAIN_CAL_VPV     (0.747386917f)
 #define CONST_VPV_15BIT  	(ADC_LSB_15BIT_MV / HV_GAIN_CAL_VPV)	// [mV / count]
 
-#define HV_GAIN_CAL_BTMS_VPV   (0.75535342f)   // 임시값, 실측 후 수정
+#define HV_GAIN_CAL_BTMS_VPV  (0.75535342f)   // 임시값, 실측 후 수정
 #define CONST_TVPV_15BIT  	(ADC_LSB_15BIT_MV / HV_GAIN_CAL_BTMS_VPV)	// [mV / count]
 
 #define ADC15_TO_HV_Cal(adc15, gain) \
@@ -124,8 +124,8 @@ typedef enum{
 /* Private macro ----------------------------------------------------------------------------------*/
 /* Private typedef --------------------------------------------------------------------------------*/
 typedef struct{
-	u16 supp3v3;
-	u16 supp5v0;
+	u16 supp3v;
+	u16 supp5v;
 	u16 supp13v;
 	u16 supp24v;
 	u16 s124_high;
@@ -142,7 +142,7 @@ typedef struct{
 typedef struct{
 	u16	ref_value;
 
-	u16	s124_center;
+	u16	s124_gain;
 	u16	s124_slope;
 		
 	u16	gain_pv_in;
@@ -154,6 +154,15 @@ typedef struct{
 	u16	gain_ax_5v;
 	u16	gain_ax_3v;
 
+	u16	setgain_pv_in;
+	u16	setgain_pv_ou;
+	u16	setgain_pv_bt;
+
+	u16	setgain_ax_24v;
+	u16	setgain_ax_13v;
+	u16	setgain_ax_5v;
+	u16	setgain_ax_3v;
+	
 }sAdcGain;
 
 

@@ -198,11 +198,11 @@ void Can_Tx_Supply_LowV(void)
 	u32	idx 	  	= (u32)(0x17u);
 	u16	tmp			= 0;
 
-	tmp = g_sAdcData.supp3v3;
+	tmp = g_sAdcData.supp3v;
 	txdat[0] = (u8)(tmp & 0xff);
 	txdat[1] = (u8)(tmp >> 8) & 0xff;
 
-	tmp = g_sAdcData.supp5v0;
+	tmp = g_sAdcData.supp5v;
 	txdat[2] = (u8)(tmp & 0xff);
 	txdat[3] = (u8)(tmp >> 8) & 0xff;
 
@@ -375,6 +375,20 @@ void Can_Tx_AdCvComFail(u8 u8SlvPos, eAdSpi_Type eSpiNum)
 	Can_TxFifo(Can_Extended_Type, idx, txdat, McuCan_Ext_Type);
 }
 
+void Can_Tx_EepData_Pv_Gain(void)
+{
+	u8 txdat[8] 	= {0};
+	u32 idx 		= (u32)(0x700u); 		
+	
+	Can_TxFifo(Can_Extended_Type, idx, (u8*)&txdat, McuCan_Ext_Type);
+}
+void Can_Tx_EepData_Ax_Gain(void)
+{
+	u8 txdat[8] 	= {0};
+	u32 idx 		= (u32)(0x700u); 	
+	
+	Can_TxFifo(Can_Extended_Type, idx, (u8*)&txdat, McuCan_Ext_Type);
+}
 
 
 
@@ -502,6 +516,10 @@ void Can_Tx_SM_Timer(u8 u8Pos)
 
 	Can_TxFifo(Can_Extended_Type, idx, (u8*)&txdat, McuCan_Ext_Type);
 }
+
+
+
+
 
 
 

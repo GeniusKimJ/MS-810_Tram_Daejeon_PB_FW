@@ -607,45 +607,224 @@ BOOL EEP_Write_Gain_PvBT(u16 value)
 	}
 }
 
-BOOL EEP_Read_CurrGain(u16* value)
+BOOL EEP_Write_Gain_Ax24v(u16 value)
+{
+	HAL_StatusTypeDef sts_wr;
+	HAL_StatusTypeDef sts_rd;
+	u8 wr_dat[8]= {0};
+	u8 rd_dat[8]= {0};
+	int icmp = 0;
+
+	wr_dat[0] = (u8)value & 0xFFu;
+	wr_dat[1] = (u8)(value >> 8) & 0xFFu;
+
+// Write
+	sts_wr = HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, EEP_AX24, I2C_MEMADD_SIZE_16BIT, (void *)&wr_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Read
+	sts_wr = HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX24, I2C_MEMADD_SIZE_16BIT, (void *)&rd_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Compare
+	icmp = memcmp(wr_dat, rd_dat, 2);
+	if(icmp != 0){
+		return FALSE;
+	}else{
+		return TRUE;
+	}
+}
+BOOL EEP_Write_Gain_Ax13v(u16 value)
+{
+	HAL_StatusTypeDef sts_wr;
+	HAL_StatusTypeDef sts_rd;
+	u8 wr_dat[8]= {0};
+	u8 rd_dat[8]= {0};
+	int icmp = 0;
+
+	wr_dat[0] = (u8)value & 0xFFu;
+	wr_dat[1] = (u8)(value >> 8) & 0xFFu;
+
+// Write
+	sts_wr = HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, EEP_AX13, I2C_MEMADD_SIZE_16BIT, (void *)&wr_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Read
+	sts_wr = HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX13, I2C_MEMADD_SIZE_16BIT, (void *)&rd_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Compare
+	icmp = memcmp(wr_dat, rd_dat, 2);
+	if(icmp != 0){
+		return FALSE;
+	}else{
+		return TRUE;
+	}
+}
+
+BOOL EEP_Write_Gain_Ax5v(u16 value)
+{
+	HAL_StatusTypeDef sts_wr;
+	HAL_StatusTypeDef sts_rd;
+	u8 wr_dat[8]= {0};
+	u8 rd_dat[8]= {0};
+	int icmp = 0;
+
+	wr_dat[0] = (u8)value & 0xFFu;
+	wr_dat[1] = (u8)(value >> 8) & 0xFFu;
+
+// Write
+	sts_wr = HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, EEP_AX5, I2C_MEMADD_SIZE_16BIT, (void *)&wr_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Read
+	sts_wr = HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX5, I2C_MEMADD_SIZE_16BIT, (void *)&rd_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Compare
+	icmp = memcmp(wr_dat, rd_dat, 2);
+	if(icmp != 0){
+		return FALSE;
+	}else{
+		return TRUE;
+	}
+}
+BOOL EEP_Write_Gain_Ax3v(u16 value)
+{
+	HAL_StatusTypeDef sts_wr;
+	HAL_StatusTypeDef sts_rd;
+	u8 wr_dat[8]= {0};
+	u8 rd_dat[8]= {0};
+	int icmp = 0;
+
+	wr_dat[0] = (u8)value & 0xFFu;
+	wr_dat[1] = (u8)(value >> 8) & 0xFFu;
+
+// Write
+	sts_wr = HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, EEP_AX3, I2C_MEMADD_SIZE_16BIT, (void *)&wr_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Read
+	sts_wr = HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX3, I2C_MEMADD_SIZE_16BIT, (void *)&rd_dat[0],2,20U);
+	if(sts_wr != HAL_OK){
+		return FALSE;
+	}
+
+// Compare
+	icmp = memcmp(wr_dat, rd_dat, 2);
+	if(icmp != 0){
+		return FALSE;
+	}else{
+		return TRUE;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+BOOL EEP_Read_CurrGain(void)
 {
 	u8 dat[8]= {0};
 	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_PI_GAIN, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != HAL_OK){}
-	*value = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	g_sAdcGain.s124_gain = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
 	return TRUE;
 }
 
-BOOL EEP_Read_CurrOffset(u16* value)
+BOOL EEP_Read_CurrOffset(void)
 {
 	u8 dat[8]= {0};
 	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_PI_OFFS, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != HAL_OK){}
-	*value = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	g_sAdcGain.s124_slope = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
 	return TRUE;
 }
 
-BOOL EEP_Read_Gain_PvIN(u16* value)
+BOOL EEP_Read_Gain_PvIN(void)
 {
 	u8 dat[8]= {0};
 	while( HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_PV_IN, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != HAL_OK){}
-	*value = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	g_sAdcGain.gain_pv_in = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
 	return TRUE;
 }
 
-BOOL EEP_Read_Gain_PvOU(u16* value)
+BOOL EEP_Read_Gain_PvOU(void)
 {
 	u8 dat[8]= {0};
 	while( HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_PV_OU, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != HAL_OK){}
-	*value = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	g_sAdcGain.gain_pv_ou = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
 	return TRUE;
 }
 
-BOOL EEP_Read_Gain_PvBT(u16* value)
+BOOL EEP_Read_Gain_PvBT(void)
 {
 	u8 dat[8]= {0};
 	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_PV_BT, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != 0){}
-	*value = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	g_sAdcGain.gain_pv_bt = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
 	return TRUE;
 }
+
+
+BOOL EEP_Read_Gain_ax24v(void)
+{
+	u8 dat[8]= {0};
+	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX24, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != 0){}
+	g_sAdcGain.gain_ax_24v = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	return TRUE;
+}
+BOOL EEP_Read_Gain_ax13v(void)
+{
+	u8 dat[8]= {0};
+	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX13, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != 0){}
+	g_sAdcGain.gain_ax_13v = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	return TRUE;
+}
+BOOL EEP_Read_Gain_ax5v(void)
+{
+	u8 dat[8]= {0};
+	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX5, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != 0){}
+	g_sAdcGain.gain_ax_5v = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	return TRUE;
+}
+BOOL EEP_Read_Gain_ax3v(void)
+{
+	u8 dat[8]= {0};
+	while(HAL_I2C_Mem_Read(&hi2c1, SLA24EEP, EEP_AX3, I2C_MEMADD_SIZE_16BIT, (void *)&dat[0],2,20U) != 0){}
+	g_sAdcGain.gain_ax_3v = (u16)((u16)(dat[1] << 8) | (u16)dat[0]);
+	return TRUE;
+}
+
+
+
+
+
+
+
+
+
+
 
 BOOL EEP_Write_CalData(Enum_CalPos_Type calpos, s32 caldata)
 {
@@ -678,23 +857,23 @@ BOOL EEP_Read_CalData(Enum_CalPos_Type calpos, s32* pcaldata)
 	BOOL bok = FALSE;
 	
 	if(calpos == CalPos_Curr_Gain_Type){
-		bok = EEP_Read_CurrGain((u16)(*pcaldata));
+		bok = EEP_Read_CurrGain();
 	}else if(calpos == CalPos_Curr_Offset_Type){
-		bok = EEP_Read_CurrOffset((u16)(*pcaldata));
+		bok = EEP_Read_CurrOffset();
 	}else if(calpos == CalPos_Pv_In_Type){
-		bok = EEP_Read_Gain_PvIN((u16)(*pcaldata));
+		bok = EEP_Read_Gain_PvIN();
 	}else if(calpos == CalPos_Pv_Ou_Type){
-		bok = EEP_Read_Gain_PvOU((u16)(*pcaldata));
+		bok = EEP_Read_Gain_PvOU();
 	}else if(calpos == CalPos_Pv_Bt_Type){
-		bok = EEP_Read_Gain_PvBT((u16)(*pcaldata));
+		bok = EEP_Read_Gain_PvBT();
 	}else if(calpos == CalPos_Ax_24V_Type){
-
+		bok = EEP_Read_Gain_ax24v();
 	}else if(calpos == CalPos_Ax_13V_Type){
-
+		bok = EEP_Read_Gain_ax13v();
 	}else if(calpos == CalPos_Ax_5V_Type){
-
+		bok = EEP_Read_Gain_ax5v();
 	}else if(calpos == CalPos_Ax_3V_Type){
-
+		bok = EEP_Read_Gain_ax3v();
 	}
 	return bok;
 }

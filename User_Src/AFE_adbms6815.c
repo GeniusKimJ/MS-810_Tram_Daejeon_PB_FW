@@ -814,7 +814,7 @@ void Adbms6815_Make_BalFlag(Pkt_Rack *pBmsData,sAdbms6815 *pAd)
 		}
 	}
 
-	if(pBmsData->pi[IREAL] >= (-2000)){	                                             			//KKD 2026-01-20 -2A 이상 bal stop
+	if(pBmsData->pi[IREAL] <= (-2000)){	                                             			//KKD 2026-01-20 -2A 이상 bal stop
 		bstart = FALSE;
 	}
 	

@@ -273,9 +273,7 @@ typedef unsigned char		BOOL;
 
 #define PVINP				(0U)
 #define PVOUT				(1U)
-#define PVCHG				(2U)
-#define PVBTM				(3U)
-#define PV2R5				(4U)
+#define PVBTM				(2U)
 
 /**************************  CURRENT  *********************************************/
 //#define ZEROCURR			(1000)
@@ -517,8 +515,11 @@ typedef struct
 
 	BOOL bset_cal;
 	u8	mn_calpos;
-	u16	mn_ref_data;
+	u32	mn_ref_data;
+	u32	mn_cal_data;
 	u32	mn_set_caldata;
+	float mn_cal_ratio;
+	float mn_cal_offset;
 }sMn;
 #endif
 #pragma pack(pop)

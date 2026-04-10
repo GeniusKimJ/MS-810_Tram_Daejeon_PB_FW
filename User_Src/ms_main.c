@@ -110,6 +110,10 @@ void ms_main(void)
 	{
 		//HAL_IWDG_Refresh(&hiwdg);
 		Can_TxProc(McuCan_Ext_Type);
+		if(g_sMn.bset_cal == TRUE){
+			g_sMn.bset_cal = FALSE;
+			Proc_Calibration((Enum_CalPos_Type)g_sMn.mn_calpos);
+		}
 		//Can_Independent();					// SM 외부에서도 100ms 주기 체크
 		if(g_f1ms == TRUE){
       		g_f1ms = FALSE;

@@ -18,5 +18,5 @@
 ../User_Src/ms_can.c:319:6:Can_SetupInterrupt	8	static
 ../User_Src/ms_can.c:361:6:Can_Init	8	static
 ../User_Src/ms_can.c:377:6:HAL_CAN_RxFifo0MsgPendingCallback	48	static
-../User_Src/ms_can.c:629:6:Can_TxFifo	32	static
-../User_Src/ms_can.c:649:6:Can_TxProc	48	static
+../User_Src/ms_can.c:630:6:Can_TxFifo	32	static
+../User_Src/ms_can.c:650:6:Can_TxProc	48	static

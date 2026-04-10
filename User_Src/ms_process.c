@@ -53,13 +53,10 @@ void Proc_Calcul_CvTh(Pkt_Rack *pBmsData)
 	}
 
 	if((g_sMn.mn_type & ((u16)1U << (u16)MN_DET_TYPE)) != 0U){
-			for(u16 pos=0; pos<NCV; pos++){
-				pBmsData->TrayPkt[0].cell[pos] = (u16)((s32)pBmsData->TrayPkt[0].cell[pos] + g_sMn.offset_cv);
-			}
-	}else{
-	    memcpy(&pBmsData->TrayPkt[0].cell[0],&g_ad.u16Cv[0],sizeof(g_ad.u16Cv));
+		for(u16 pos=0; pos<NCV; pos++){
+			pBmsData->TrayPkt[0].cell[pos] = (u16)((s32)pBmsData->TrayPkt[0].cell[pos] + g_sMn.offset_cv);
+		}
 	}
-	
 	avgth = 0;
 	max = (s16)-32768;
 	min = (s16)32767;
@@ -277,7 +274,13 @@ void Proc_Bms_Init(void)
 	/*EEP*/
 	EEP_ReadSysInfo();
 	EEP_ReadCalData();
-
+	EEP_Read_Gain_PvIN();
+	EEP_Read_Gain_PvOU();
+	EEP_Read_Gain_PvBT();
+	EEP_Read_Gain_ax24v();
+	EEP_Read_Gain_ax13v();
+	EEP_Read_Gain_ax5v();
+	EEP_Read_Gain_ax3v();
 	//EEP_Read_CalData(CalPos_Pv_In_Type, &readdata);
 	
 
@@ -324,24 +327,48 @@ void Proc_Check_Status(Pkt_Rack *pBmsData)
 	pBmsData->fbmssts = fsts;
 }
 
-void Proc_Calibration(Enum_CalPos_Type calpos, Pkt_Rack *pBmsData)
+void Proc_Calibration(Enum_CalPos_Type calpos)
 {
+
+
+	if(g_sMn.mn_ref_data <= 0) {return;}
+	
 	if(calpos == CalPos_Curr_Gain_Type){
+		//todo . . .
+		//s124 Gain
 	}else if(calpos == CalPos_Curr_Offset_Type){
+		//todo . . .
+		//s124 offset
 	}else if(calpos == CalPos_Pv_In_Type){
-		u16 tmp (g_sAdcData.cpv >  
+			g_sAdcGain.gain_pv_in = (u16)(float)(HV_GAIN_CAL_BTMS_VPV * ((float)g_sMn.mn_ref_data / (float)RackPkt.pv[PVINP]) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_PV_IN), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_pv_in, sizeof(float), 50);
+			HAL_Delay(10);
 	}else if(calpos == CalPos_Pv_Ou_Type){
-		bok = EEP_Write_Gain_PvOU((u16)caldata);
+			g_sAdcGain.gain_pv_ou = (u16)(float)(HV_GAIN_CAL_BTMS_VPV * ((float)g_sMn.mn_ref_data / (float)RackPkt.pv[PVOUT]) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_PV_OU), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_pv_ou, sizeof(float), 50);
+			HAL_Delay(10);
 	}else if(calpos == CalPos_Pv_Bt_Type){
-		bok = EEP_Write_Gain_PvBT((u16)caldata);
+			g_sAdcGain.gain_pv_bt = (u16)(float)(HV_GAIN_CAL_BTMS_VPV * ((float)g_sMn.mn_ref_data / (float)RackPkt.pv[PVBTM]) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_PV_BT), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_pv_bt, sizeof(float), 50);
+			HAL_Delay(10);
 	}else if(calpos == CalPos_Ax_24V_Type){
-
+			g_sAdcGain.gain_ax_24v = (u16)(float)(AUX24_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp24v) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX24), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_24v , sizeof(float), 50);
+			HAL_Delay(10);
 	}else if(calpos == CalPos_Ax_13V_Type){
-
+		if(g_sAdcData.supp13v > 0u){
+			g_sAdcGain.gain_ax_13v = (u16)(float)(AUX13_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp13v) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX13), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_13v , sizeof(float), 50);
+			HAL_Delay(10);
+		}
 	}else if(calpos == CalPos_Ax_5V_Type){
-
+			g_sAdcGain.gain_ax_5v = (u16)(float)(AUX5_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp5v) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX5), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_5v , sizeof(float), 50);
+			HAL_Delay(10);
 	}else if(calpos == CalPos_Ax_3V_Type){
-
+			g_sAdcGain.gain_ax_3v = (u16)(float)(AUX3_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp3v) * 10000.0f);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX3), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_3v , sizeof(float), 50);
+			HAL_Delay(10);
 	}
 
 }

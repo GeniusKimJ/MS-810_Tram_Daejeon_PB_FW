@@ -191,7 +191,7 @@ void ADC1_Ch0_GetAd24V(void) {
 	double d64_buf[1] = {0};
 
 	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*CONST_AUX24_15BIT;
+	d64_buf[0] = d64_adc* (ADC_LSB_15BIT_MV / (AUX24_GAIN * (g_sAdcGain.gain_ax_24v * 0.0001f)));
 	g_sAdcData.supp24v = (u16)d64_buf[0];
 }
 
@@ -201,7 +201,7 @@ void ADC1_Ch1_GetAd13V(void) {
 	double d64_buf[1] = {0};
 
 	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*CONST_AUX13_15BIT;
+	d64_buf[0] = d64_adc*(g_sAdcGain.gain_ax_13v * 0.0001f);
 	g_sAdcData.supp13v = (u16)d64_buf[0];
 }
 
@@ -211,8 +211,8 @@ void ADC1_Ch2_GetAd5V0(void) {
 	double d64_buf[1] = {0};
 
 	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*CONST_AUX5_15BIT;
-	g_sAdcData.supp5v0 = (u16)d64_buf[0];
+	d64_buf[0] = d64_adc*(g_sAdcGain.gain_ax_5v * 0.0001f);
+	g_sAdcData.supp5v = (u16)d64_buf[0];
 }
 // PA3 - 3.3V
 void ADC1_Ch3_GetAd3V3(void) {
@@ -220,9 +220,10 @@ void ADC1_Ch3_GetAd3V3(void) {
 	double d64_buf[1] = {0};
 
 	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*CONST_AUX33_15BIT;
-	g_sAdcData.supp3v3 = (u16)d64_buf[0];
+	d64_buf[0] = d64_adc*(g_sAdcGain.gain_ax_3v * 0.0001f);
+	g_sAdcData.supp3v = (u16)d64_buf[0];
 }
+
 
 // PA3 -CPV	
 void ADC2_Ch0_GetCPV(void) {
@@ -231,7 +232,7 @@ void ADC2_Ch0_GetCPV(void) {
 	double d64_res = 0;
 
 	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN4_CPV );
-	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,g_sAdcGain.gain_pv_in);	
+	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_in * 0.0001f));	
 	d64_res = d64_buf * (double)0.01f;
 	g_sAdcData.cpv = (u16)d64_res;
 	g_sAdcData.cpvAdc = (u16)d64_adc;
@@ -244,7 +245,7 @@ void ADC2_Ch1_GetAVPV(void) {
 	double d64_res = 0;
 
 	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN5_VPV );
-	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,g_sAdcGain.gain_pv_ou);
+	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_ou * 0.0001f));
 	d64_res = d64_buf * (double)0.01f;
 	g_sAdcData.vpv = (u16)d64_res;
 	g_sAdcData.vpvAdc = (u16)d64_adc;
@@ -257,7 +258,7 @@ void ADC2_Ch2_GetBtmsVPV(void) {
 	double d64_res = 0;
 
 	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN6_TVPV );
-	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,g_sAdcGain.gain_pv_bt);
+	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_bt * 0.0001f));
 	d64_res = d64_buf * (double)0.01f;
 	g_sAdcData.tvpv = (u16)d64_res;
 	g_sAdcData.tvpvAdc = (u16)d64_adc;
@@ -383,19 +384,25 @@ u32 ADC_Get_PV_BT(void)
 
 void Adc_DefaultV_Gain(sAdcGain *pstAdcGain)
 {
-	pstAdcGain->s124_center	= 0;
-	pstAdcGain->s124_slope	= 0;
+	//pstAdcGain->s124_center	= 0;
+	//pstAdcGain->s124_slope	= 0;
 	pstAdcGain->gain_pv_in	= HV_GAIN_CAL_CPV;
 	pstAdcGain->gain_pv_ou	= HV_GAIN_CAL_VPV;
 	pstAdcGain->gain_pv_bt	= HV_GAIN_CAL_BTMS_VPV;
 	pstAdcGain->gain_ax_24v	= AUX24_GAIN;
 	pstAdcGain->gain_ax_13v	= AUX13_GAIN;
 	pstAdcGain->gain_ax_5v	= AUX5_GAIN;
-	pstAdcGain->gain_ax_3v	= AUX33_GAIN;
+	pstAdcGain->gain_ax_3v	= AUX3_GAIN;
 
 	EEP_Write_Gain_PvIN(pstAdcGain->gain_pv_in);
 	EEP_Write_Gain_PvOU(pstAdcGain->gain_pv_ou);
 	EEP_Write_Gain_PvBT(pstAdcGain->gain_pv_bt);
+	EEP_Write_Gain_Ax24v(pstAdcGain->gain_ax_24v);
+	EEP_Write_Gain_Ax13v(pstAdcGain->gain_ax_13v);
+	EEP_Write_Gain_Ax5v(pstAdcGain->gain_ax_5v);
+	EEP_Write_Gain_Ax3v(pstAdcGain->gain_ax_3v);
+	
+	/* PV gain은 Proc_Calibration에서 RatPV[k] 기반으로 EEP에 저장됩니다. */
 	//todo... add aux eep write func
 
 }
@@ -405,8 +412,8 @@ u16 ADC_GetAdc_PVOUT(void)					{	return g_sAdcData.vpvAdc;	}
 u16 ADC_GetAdc_PV_BT(void)					{	return g_sAdcData.tvpvAdc;	}
 
 /* Manual Set */
-void ADC_SetAdc_PVIN(u16 value)				{	g_sAdcData.cpv = value;	}
-void ADC_SetAdc_PVOUT(u16 value)			{	g_sAdcData.vpv = value;	}
+void ADC_SetAdc_PVIN(u16 value)				{	g_sAdcData.cpv = value;		}
+void ADC_SetAdc_PVOUT(u16 value)			{	g_sAdcData.vpv = value;		}
 void ADC_SetAdc_PV_BT(u16 value)			{	g_sAdcData.tvpv = value;	}
 
 

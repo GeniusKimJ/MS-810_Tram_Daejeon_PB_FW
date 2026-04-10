@@ -348,8 +348,8 @@ void Can_SetupInterrupt(void)
 		activeInt = (
 			  CAN_IT_TX_MAILBOX_EMPTY                                                   //KKD 2025-12-01 전송완료(메일박스 비었음)
 			 | CAN_IT_RX_FIFO0_MSG_PENDING												//KKD 2025-11-26 수신 FIFO0 메시지 도착
-//			 | CAN_IT_RX_FIFO0_MSG_PENDING											//KKD 2025-11-26 수신 FIFO0 메시지 도착
-//			 | CAN_IT_ERROR															//KKD 2025-11-26 CAN 통합 에러 발생
+//			 | CAN_IT_RX_FIFO0_MSG_PENDING												//KKD 2025-11-26 수신 FIFO0 메시지 도착
+//			 | CAN_IT_ERROR																//KKD 2025-11-26 CAN 통합 에러 발생
 //			 | CAN_IT_BUSOFF 															//KKD 2025-11-26 Bus-Off 진입
 //			 | CAN_IT_LAST_ERROR_CODE													//KKD 2025-11-26 최근 Error Code 변경
 		  );
@@ -452,7 +452,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					g_sMn.mn_set_cvpos = (u16)(((u16)rxdat[2] << 8u) | (u16)rxdat[1]);
 
 					
-					if((g_sMn.mn_set_cvpos > (u16)NCV)) 							 	{ return; }
+					if((g_sMn.mn_set_cvpos > (u16)NCV)) 						{ return; }
 					if((g_sMn.mn_set_cv < (u16)1500) || (g_sMn.mn_set_cv > (u16)5000)) { return; }
 
 

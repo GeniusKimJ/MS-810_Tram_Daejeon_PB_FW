@@ -219,7 +219,7 @@ void BTMS_Start(void)
 
 	//tx
 	if((tmax > (s16)400) || (tagv > (s16)350)){
-		BTMS_485Tx_Data(BTMS_CMD_START, (u8)OP_STA_AUTO);
+		BTMS_485Tx_Data(BTMS_CMD_START, (u8)OP_STA_SEMI);
 	}else if((tmax < (s16)200) || (tagv < (s16)250)){
 		BTMS_485Tx_Data(BTMS_CMD_START, (u8)OP_STOP);
 	}else{
