@@ -1,0 +1,106 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_main.c
+\author             KKD
+\date               2025-11-21 
+\brief              Main ������ ���� �ڵ�.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+Pkt_Rack RackPkt;
+sSystemTick g_sSysTick;
+
+/* Private variables ------------------------------------------------------------------------------*/
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+void ms_main(void)
+{
+  	HAL_TIM_Base_Start_IT(&htim1);                                                    	//KKD 2025-11-26 타이머 인터럽 트초기화
+	Can_Init();
+	Adbms6815_Init();                                                                   //KKD 2025-11-26 Adbms6815 Init
+    MVB_Init(MVB_MODE_POLLING);                                                         //KKD 2025-11-26 DMA 폴링모드 시작
+    MVB_InitSequence();                                                            		//KKD 2025-11-26 초기 시퀀스 수행
+	Humi_Init(&hi2c1, SHT3X_ADDR_A);
+	InitSocData();
+	//DetChk_Default(&g_sWF_Spec);                                                        //KKD 2025-12-01 Warning, Fault 기준값 설정
+
+
+    
+	while(1)
+	{
+		Can_TxProc(McuCan_Int_Type);
+		
+		if(g_sSysTick.bInitProc == TRUE){ 
+			g_sSysTick.bInitProc = FALSE;
+			//need?
+		}
+		if(g_sSysTick.bAdbmsProc == TRUE){ 
+			g_sSysTick.bAdbmsProc = FALSE;
+			Adbms6815_Proc();
+		}
+		if( g_sSysTick.bStateProc == TRUE){ 
+			g_sSysTick.bStateProc = FALSE;
+			//led
+			//rly status
+			//led status
+			//key status
+			//Warn, Fault status
+			
+		}
+		if(g_sSysTick.bDataProc == TRUE){
+			g_sSysTick.bDataProc == TRUE;
+			//Data Cal (V/T/I)
+
+			//eep Save
+			SaveBmsData();
+		}
+
+		
+		if( g_sSysTick.bSocProc == TRUE){ 
+			g_sSysTick.bSocProc = FALSE;
+			StateOfCharge(RackPkt.ratefullcap, RackPkt.avgcv, RackPkt.pi[I1SEC], RackPkt.fdet);
+		}
+		if(g_sSysTick.bStateProc == TRUE){ 
+			g_sSysTick.bStateProc = FALSE;
+		}
+		if(g_sSysTick.bCtlProc == TRUE){
+			g_sSysTick.bCtlProc = FALSE;
+			//HW Control  (Relay, Led)				
+		}
+
+
+		//Communication
+		if(g_sSysTick.bMvbProc == TRUE){
+			g_sSysTick.bMvbProc = FALSE;
+		}
+		if(g_sSysTick.bMonPorc == TRUE){
+			g_sSysTick.bMonPorc = FALSE;
+			MVB_Proc();
+		}
+		if(g_sSysTick.bCanProc == TRUE){
+			g_sSysTick.bCanProc = FALSE;
+			Can_Proc();
+		}
+
+	}
+}
+
+
+
+

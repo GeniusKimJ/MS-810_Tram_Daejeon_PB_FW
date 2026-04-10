@@ -1,0 +1,452 @@
+﻿/*====*====*====*====*====*====*====*====*====*====*====*====*====*====*====*
+
+                                  M A C R O
+
+GENERAL DESCRIPTION
+
+
+EXTERNALIZED FUNCTIONS
+
+INITIALIZATION AND SEQUENCING REQUIREMENTS
+
+*====*====*====*====*====*====*====*====*====*====*====*====*====*====*====*/
+
+
+/*===========================================================================
+
+                        EDIT HISTORY FOR MODULE
+
+$Header:
+
+when       who     what, where, why
+--------   ---     ----------------------------------------------------------
+00/12/19   bmkim   Created module(added Macro function).
+*/
+
+macro InsertNULLDefined() 
+{
+//  InsertDefined("DET_UPATE","DETECT 관련 수정.")  
+//  InsertDefined("CAN_BUF_UPATE","Can Buffer 관련 수정.")  
+//  InsertDefined("PWR_SLEEP_UPATE","Sleep 모드 적용.")  
+//  InsertDefined("MVB_UPDATE","MVB코드 수정.")  
+//  InsertDefined("USE_HUMI_SHT3XDIS","HUMI_SHT3XDIS센서 코드.")    
+  InsertDefined("USE_ADBMS_B_TEST","ADBMS_B 테스트 코드.")    
+}
+
+macro InsertFileHeader2()
+{
+/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)	        	                               *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2024. 10 Misum Systech Co.,Ltd. All Rights Reserved.                          *
+*=================================================================================================*/
+
+/************************ (C) COPYRIGHT 2007 MisumSystech ***************************
+* File Name          : 
+* Author             : 
+* Date First Issued  : 
+* Description        : 
+********************************************************************************
+* History:
+* 2025-10-24 v0.01
+********************************************************************************
+*******************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
+
+
+    szMyName = userName()
+    hbuf = GetCurrentBuf()
+    filename = GetBufName(hbuf)
+    index1 = 0 
+
+    while(index1 != "X" ){
+        filename = strmid(filename,index1,strlen(filename))
+        index1 = FindString(filename,"\\")
+        if( index1 != "X" ){
+            index1 = index1 + 1
+        }
+    }
+
+    if( strmid(filename,strlen(filename)-1,strlen(filename)) == "h" ){
+        str = "Exported"
+        defineName = strmid(filename,0,strlen(filename)-2)
+        defineName = toupper(defineName)
+    }else{
+        str = "Private"
+    }
+    
+    data = getdate()
+    year = getyear()
+    description = ask("@filename@ description")
+
+    local_time = GetSysTime(1)
+    line = 0
+    
+/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)	        	                               *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2024. 10 Misum Systech Co.,Ltd. All Rights Reserved.                          *
+*=================================================================================================*/
+
+
+    InsBufLine(hbuf, line++ , "/**================================================================================================*")
+    if( strmid(filename,strlen(filename)-1,strlen(filename)) == "h" ){
+    InsBufLine(hbuf, line++ , "*       Header File                                                                                *")
+    }
+    else{
+    InsBufLine(hbuf, line++ , "*       Source File                                                                                *")
+    }
+    InsBufLine(hbuf, line++ , "*==================================================================================================*")
+    InsBufLine(hbuf, line++ , "*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *")
+    InsBufLine(hbuf, line++ , "*       [Version]    : 1.0                                                                         *")
+    InsBufLine(hbuf, line++ , "*       [Start]      : @data@                                                                 *")
+    InsBufLine(hbuf, line++ , "*       [Inventor]   : www.misum.co.kr                                                             *")
+    InsBufLine(hbuf, line++ , "*       Copyright(C) @year@ Misum Systech Co.,Ltd. All Rights Reserved.                              *")
+    InsBufLine(hbuf, line++ , "*==================================================================================================*")
+    InsBufLine(hbuf, line++ , "** For Doxygen ******************************")
+    InsBufLine(hbuf, line++ , "\\file               @filename@")
+    InsBufLine(hbuf, line++ , "\\author             @szMyName@")
+    InsBufLine(hbuf, line++ , "\\date               @data@")
+    InsBufLine(hbuf, line++ , "\\brief              @description@")
+    InsBufLine(hbuf, line++ , "*********************************************")
+    InsBufLine(hbuf, line++ , "* History:")
+    InsBufLine(hbuf, line++ , "* @data@    v0.01    @szMyName@    Create")
+    InsBufLine(hbuf, line++ , "*==================================================================================================*/")
+
+    if( strmid(filename,strlen(filename)-1,strlen(filename)) == "h" ){
+    InsBufLine(hbuf, line , "#ifndef __@defineName@_H__")
+    line = line + 1
+    InsBufLine(hbuf, line , "#define __@defineName@_H__")
+    line = line + 1
+    }
+    
+    InsBufLine(hbuf, line , "/* Includes ---------------------------------------------------------------------------------------*/")
+    line = line + 1
+    InsBufLine(hbuf, line , "/* @str@ define ---------------------------------------------------------------------------------*/")
+    line = line + 1
+    InsBufLine(hbuf, line , "/* @str@ macro ----------------------------------------------------------------------------------*/")
+    line = line + 1
+    InsBufLine(hbuf, line , "/* @str@ typedef --------------------------------------------------------------------------------*/")
+    line = line + 1
+    InsBufLine(hbuf, line , "/* @str@ variables ------------------------------------------------------------------------------*/")
+    line = line + 1
+    InsBufLine(hbuf, line , "/* @str@ function prototypes --------------------------------------------------------------------*/")
+    line = line + 1
+    if( strmid(filename,strlen(filename)-1,strlen(filename)) != "h" ){
+    InsBufLine(hbuf, line , "/* @str@ functions ------------------------------------------------------------------------------*/")
+    line = line + 1
+    }
+    InsBufLine(hbuf, line , "")
+    line = line + 1
+    InsBufLine(hbuf, line , "")
+    line = line + 1
+    InsBufLine(hbuf, line , "")
+    line = line + 1
+    InsBufLine(hbuf, line , "")
+    line = line + 1
+    if( strmid(filename,strlen(filename)-1,strlen(filename)) == "h" ){
+    InsBufLine(hbuf, line , "#endif //__@defineName@_H__")
+    line = line + 1
+    }
+
+}
+
+macro InsertHeader2()
+{
+
+    // Get a handle to the current file buffer and the name
+    // and location of the current symbol where the cursor is.
+    hbuf = GetCurrentBuf()
+    szFunc = GetCurSymbol()
+    ln = GetSymbolLine(szFunc)
+
+    // begin assembling the title string
+
+    line = ln
+    if( line < 0 ){
+        line = 0;
+    }
+
+    sz = "/*********************************************************************************/"
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+
+    sz = "//3   Function Name  : @szFunc@"
+    cch = strlen(sz)
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+    
+    sz = "/*----------------------------------------------------------------------------*//**"
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+
+    sz = "\\fn        @szFunc@"
+    cch = strlen(sz)
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+
+    sz = "\\brief     "
+    sz = cat(sz , ask("@szFunc@ 함수 설명"))
+    cch = strlen(sz)
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+
+    sz = "\\parm      "
+    sz = cat(sz , ask("@szFunc@ 함수 입력값"))
+    cch = strlen(sz)
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+    
+    sz = "\\return    "
+    sz = cat(sz , ask("@szFunc@ 함수 리턴 값"))
+    cch = strlen(sz)
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+
+    sz = "\\warning   "
+    sz = cat(sz , ask("@szFunc@ 주의 사항"))
+    cch = strlen(sz)
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+
+    sz = "*//*******************************************************************************/"
+    InsBufLine(hbuf, line, sz)
+    line = line + 1
+    // put the insertion point inside the header comment
+    SetBufIns(hbuf, ln, line)
+}
+
+
+macro InsertDS()
+{
+  InsertDefined("MisumSystech_ds","")
+}
+
+macro InsertUP()
+{
+  InsertDefined("MisumSystech_up_browser","")
+}
+
+macro Insert_SMTP()
+{
+  InsertDefined("MisumSystech_ds_smtp","")
+}
+
+macro Insert_BT()
+{
+  InsertDefined("MISUM_UP_MMC_FILE","")
+}
+
+macro InsertDefined(sz,comment)
+{
+  if (sz == "")
+    sz = "MISUM"
+
+  sz= toupper(sz)
+  str = "#ifdef @sz@    //"
+  str = Cat(str,getdate())
+  str = Cat(str,"  ")
+  str = Cat(str,userName())
+  str = Cat(str,"  ")
+  str = Cat(str,comment)
+  hbuf = GetCurrentBuf()
+  ln = GetBufLnCur (hbuf)
+  InsBufLine(hbuf,ln,str)
+  InsBufLine(hbuf, ln+1, "#else  //@sz@")
+  InsBufLine(hbuf, ln+2, "#endif //@sz@")
+}
+macro getdate()
+{
+    local_time = GetSysTime(1)
+    
+    index1 = FindString(local_time,"year=\"")
+    tmp_local_time = strmid(local_time,index1+6,strlen(local_time))
+    index2 = FindString(tmp_local_time,"\"")
+    year  = strmid(tmp_local_time,0,index2)
+
+    index1 = FindString(local_time,"month=\"")
+    tmp_local_time = strmid(local_time,index1+7,strlen(local_time))
+    index2 = FindString(tmp_local_time,"\"")
+    month  = strmid(tmp_local_time,0,index2)
+    
+    index1 = FindString(local_time,"day=\"")
+    tmp_local_time = strmid(local_time,index1+5,strlen(local_time))
+    index2 = FindString(tmp_local_time,"\"")
+    day  = strmid(tmp_local_time,0,index2)
+    
+    index1 = FindString(local_time,"hour=\"")
+    tmp_local_time = strmid(local_time,index1+6,strlen(local_time))
+    index2 = FindString(tmp_local_time,"\"")
+    hour  = strmid(tmp_local_time,0,index2)
+    
+    index1 = FindString(local_time,"minute=\"")
+    tmp_local_time = strmid(local_time,index1+8,strlen(local_time))
+    index2 = FindString(tmp_local_time,"\"")
+    minute    = strmid(tmp_local_time,0,index2)
+
+    str = ""
+    str = Cat(str,year)
+    str = Cat(str,"-")
+    if(strlen(month) == 1)
+      str = Cat(str,"0")
+    str = Cat(str,month)
+    str = Cat(str,"-")
+    if(strlen(day) == 1)
+        str = Cat(str,"0")
+    str = Cat(str,day)
+    str = Cat(str," ")
+    return str
+}
+
+macro getyear()
+{
+    local_time = GetSysTime(1)
+    
+    index1 = FindString(local_time,"year=\"")
+    tmp_local_time = strmid(local_time,index1+6,strlen(local_time))
+    index2 = FindString(tmp_local_time,"\"")
+    year  = strmid(tmp_local_time,0,index2)
+
+    str = ""
+    str = Cat(str,year)
+    return str
+}
+
+macro InsertTime()
+{
+  str = "//"
+  str = Cat(str,userName())
+  str = Cat(str,"  ")
+  str = Cat(str,getdate())
+  
+  hbuf = GetCurrentBuf()
+  ln = GetBufLnCur (hbuf)
+  ich = GetBufLineLength(hbuf,ln)
+  SetBufIns (hbuf, ln, ich)
+  InsBufLine(hbuf,ln+1,str)
+}
+
+macro FindString( source, target )
+{
+    source_len = strlen( source )
+    target_len = strlen( target )
+    match = 0
+    cp = 0
+    while( cp < source_len )
+    {
+        while( cp < source_len )
+        {
+            if( source[cp] == target[0] )
+                break
+            else
+                cp = cp + 1
+        }
+        if( cp == source_len )
+            break;
+        k = cp
+        j = 0
+        while( j < target_len && source[k] == target[j] )
+        {
+            k = k + 1
+            j = j + 1
+        }
+        if (j == target_len)
+        {
+            match = 1
+            break
+        }
+        cp = cp + 1
+    }
+    if( match )
+        return cp
+    else
+        return "X"
+}
+
+macro hangulcmt()
+{
+    sCmt = "//"
+    sCmt = Cat(sCmt, userName() )
+    sCmt = cat(sCmt," ")
+    sCmt = Cat(sCmt,getdate())
+    sCmt = cat(sCmt,"")
+    sCmt = cat(sCmt,ask("주석을 입력 하세요"))
+//    sCmt = cat(sCmt,"*/")
+
+    hWnd = GetCurrentWnd()
+    inFirst = GetWndSelLnFirst(hWnd)
+    hBuf = GetCurrentBuf()
+    sCurrent = GetBufLine(hBuf, inFirst)
+
+    ln = GetBufLnCur (hBuf)
+    ich = GetBufLineLength(hBuf,ln)
+
+	i = 0
+	len   = 0
+	while( i < ich ){
+		if( sCurrent[ i++ ] == CharFromAscii( 9 ) ) //탭의 수가 1로 인식되어 수정.
+		{
+			len = len + 3
+		}
+		len++;
+	}
+
+	ich = len
+
+    if(ich>4){
+        while( ich < 87 ){
+            sCurrent = cat(sCurrent," ")
+            ich = ich + 1
+        }
+    }
+
+    
+    DelBufLine(hBuf, inFirst);  
+    InsBufLine(hBuf, inFirst, "@sCurrent@ @sCmt@");    
+}
+
+// ExpandStringVariables(str)
+// - Text Variables 를 문자열 안에서 직접 치환하는 유틸리티 함수
+// - Source Insight 는 원래 문자열 치환을 지원하지 않지만
+//   버퍼에 임시 삽입해서 Expand Text Variables 실행 후 다시 읽는 방식으로 구현.
+//
+macro ExpandStringVariables(str)
+{
+    hbuf = GetCurrentBuf();
+    if (hbuf == 0)
+        stop;
+
+    SetBufSelText(hbuf,str);
+
+    // 변수 치환 실행
+    RunCmd("Expand Text Variables");
+
+
+    return result;
+}
+
+
+macro userName(){
+    return "jkpark"
+}
+
+macro DoNothing()
+{
+}
+
+

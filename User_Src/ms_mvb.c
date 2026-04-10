@@ -1,0 +1,607 @@
+﻿/*********************************************************************************/
+//3   Function Name  : 
+/**----------------------------------------------------------------------------
+** ================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(MVB)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_mvb.c
+\author             KKD
+\date               2025-11-21 
+\brief              MVB 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_mvb.h>
+#include "ms_timer.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+
+  
+/* Private variables ------------------------------------------------------------------------------*/
+//extern UART_HandleTypeDef huart2;
+sMvbData g_sMvbData = {0};
+static u32 g_su32tmsLastTime;
+
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+#if 1
+u16 MVB_Crc16(const u8 *buf, int len)
+{
+	/* CRC16 implementation acording to CCITT standards */
+	static const u16 crc16tab[256]= { 
+		0x0000,0x1021,0x2042,0x3063,0x4084,0x50a5,0x60c6,0x70e7, 
+		0x8108,0x9129,0xa14a,0xb16b,0xc18c,0xd1ad,0xe1ce,0xf1ef, 
+		0x1231,0x0210,0x3273,0x2252,0x52b5,0x4294,0x72f7,0x62d6, 
+		0x9339,0x8318,0xb37b,0xa35a,0xd3bd,0xc39c,0xf3ff,0xe3de, 
+		0x2462,0x3443,0x0420,0x1401,0x64e6,0x74c7,0x44a4,0x5485, 
+		0xa56a,0xb54b,0x8528,0x9509,0xe5ee,0xf5cf,0xc5ac,0xd58d, 
+		0x3653,0x2672,0x1611,0x0630,0x76d7,0x66f6,0x5695,0x46b4, 
+		0xb75b,0xa77a,0x9719,0x8738,0xf7df,0xe7fe,0xd79d,0xc7bc, 
+		0x48c4,0x58e5,0x6886,0x78a7,0x0840,0x1861,0x2802,0x3823, 
+		0xc9cc,0xd9ed,0xe98e,0xf9af,0x8948,0x9969,0xa90a,0xb92b, 
+		0x5af5,0x4ad4,0x7ab7,0x6a96,0x1a71,0x0a50,0x3a33,0x2a12, 
+		0xdbfd,0xcbdc,0xfbbf,0xeb9e,0x9b79,0x8b58,0xbb3b,0xab1a, 
+		0x6ca6,0x7c87,0x4ce4,0x5cc5,0x2c22,0x3c03,0x0c60,0x1c41, 
+		0xedae,0xfd8f,0xcdec,0xddcd,0xad2a,0xbd0b,0x8d68,0x9d49, 
+		0x7e97,0x6eb6,0x5ed5,0x4ef4,0x3e13,0x2e32,0x1e51,0x0e70, 
+		0xff9f,0xefbe,0xdfdd,0xcffc,0xbf1b,0xaf3a,0x9f59,0x8f78, 
+		0x9188,0x81a9,0xb1ca,0xa1eb,0xd10c,0xc12d,0xf14e,0xe16f, 
+		0x1080,0x00a1,0x30c2,0x20e3,0x5004,0x4025,0x7046,0x6067, 
+		0x83b9,0x9398,0xa3fb,0xb3da,0xc33d,0xd31c,0xe37f,0xf35e, 
+		0x02b1,0x1290,0x22f3,0x32d2,0x4235,0x5214,0x6277,0x7256, 
+		0xb5ea,0xa5cb,0x95a8,0x8589,0xf56e,0xe54f,0xd52c,0xc50d, 
+		0x34e2,0x24c3,0x14a0,0x0481,0x7466,0x6447,0x5424,0x4405, 
+		0xa7db,0xb7fa,0x8799,0x97b8,0xe75f,0xf77e,0xc71d,0xd73c, 
+		0x26d3,0x36f2,0x0691,0x16b0,0x6657,0x7676,0x4615,0x5634, 
+		0xd94c,0xc96d,0xf90e,0xe92f,0x99c8,0x89e9,0xb98a,0xa9ab, 
+		0x5844,0x4865,0x7806,0x6827,0x18c0,0x08e1,0x3882,0x28a3, 
+		0xcb7d,0xdb5c,0xeb3f,0xfb1e,0x8bf9,0x9bd8,0xabbb,0xbb9a, 
+		0x4a75,0x5a54,0x6a37,0x7a16,0x0af1,0x1ad0,0x2ab3,0x3a92, 
+		0xfd2e,0xed0f,0xdd6c,0xcd4d,0xbdaa,0xad8b,0x9de8,0x8dc9, 
+		0x7c26,0x6c07,0x5c64,0x4c45,0x3ca2,0x2c83,0x1ce0,0x0cc1, 
+		0xef1f,0xff3e,0xcf5d,0xdf7c,0xaf9b,0xbfba,0x8fd9,0x9ff8, 
+		0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0 
+	}; 
+	
+    u16 crc = 0;
+    
+    for (int i = 0; i < len; i++){
+        crc = (crc << 8) ^ crc16tab[((crc >> 8) ^ buf[i]) & 0xFFu];
+    }return crc;
+}
+#else
+/* ==================== CRC16 ==================== */
+u16 MVB_Crc16(const u8 *buf, u16 len)
+{
+    u16 crc = 0x0000;
+    for (u16 i = 0; i < len; i++) {
+        crc ^= (u16)buf[i] << 8;
+        for (u8 b = 0; b < 8; b++)
+            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : (crc << 1);
+    } return crc;
+}
+#endif
+
+/* ==================== UART 초기화 ==================== */
+void MVB_Init(eMvbRxMode mode)
+{
+//    u32	start	= 0;
+//    int retValue = -1;
+//    GPIO_DOut_MVB(TRUE);
+    GPIO_DOut_EN422(FALSE);
+
+    g_sMvbData.eRxMode		= mode;                                                   	//KKD 2025-11-26 init Rx Mode
+    g_sMvbData.u16PrevPos	= 0;                                                      	//KKD 2025-11-26 init RxData Position
+    g_sMvbData.bRxOk		= 0;                                                      	//KKD 2025-11-26 Deinit Rx Finished Flag 
+
+    HAL_UART_Receive_DMA(&huart2, g_sMvbData.u8RxDmaBuf, MVB_RX_MAX);                   //KKD 2025-11-28 DMA 시작
+
+    g_sMvbData.eState = MVB_STATE_ON;
+}
+
+/* ==================== 프레임 송신 ==================== */
+void MVB_SendFrame(u8 cmd, u8 *data, u8 len)
+{
+    u8 txBuf[128] = {0,};
+    int idx = 0;
+
+    if(((u8)(len + (u8)MVB_MIN_LEN )) >= sizeof( txBuf ) ){return;}                              //jkpark 2026-01-05 데이터 크기 오류.
+
+    txBuf[idx++] = (u8)MVB_HEADER_DEV_MVB;                                                  //KKD 2025-11-26 Start Byte
+    txBuf[idx++] = cmd;                                                                 //KKD 2025-11-26 Cmd Byte
+    txBuf[idx++] = len;                                                                 //KKD 2025-11-26 Length Byte
+    memcpy(&txBuf[idx], data, len);                                                     //KKD 2025-11-26 Header + Data Set
+    idx += (int)len;                                                                         //KKD 2025-11-26 (Header + Data) Size
+
+    u16 crc = MVB_Crc16(&txBuf[ MVB_LEN_IDX ], (int)(u8)(len + (u8)MVB_LEN_LEN) );                     //KKD 2025-11-26 Make CRC (Len Byte to Last Data Byte)
+    txBuf[idx++] = (u8)(crc >> 8u) & 0xFFu;                                                   //KKD 2025-11-26 CRC High(big)
+    txBuf[idx++] = (u8)(crc & 0xFFu);                                                        //KKD 2025-11-26 CRC Low(big)
+    txBuf[idx++] = MVB_ENDER;                                                           //KKD 2025-11-26 End Byte
+    
+    GPIO_DOut_EN422(TRUE);                                                              //jkpark 2026-01-05 EN422컨트롤을 해주지 않으면 전류소모가 큼.
+    HAL_UART_Transmit(&huart2, txBuf, (u16)idx, (u32)100);
+    GPIO_DOut_EN422(FALSE);                                                             //jkpark 2026-01-05 EN422컨트롤을 해주지 않으면 전류소모가 큼.
+}
+
+#ifdef MVB_UPDATE    //2026-01-05   jkpark  MVB코드 수정.
+u8 MVB_SendCheckPoll(u8 cmd, u8 *data, u8 len, u32 timeOut )
+{
+    u32	start	= 0;
+    u8  readOk  = FALSE;
+
+    MVB_SendFrame(cmd, data,  len );
+
+    start = HAL_GetTick();
+    while ( ( HAL_GetTick() - start ) < (u32)timeOut )                                         	//KKD 2025-11-26 (1) 상태 체크에대한 응답 확인 //jkpark 수정.
+    {
+        MVB_Receive_DMA_Poll();
+        if (g_sMvbData.bRxOk == TRUE)
+        {
+            g_sMvbData.bRxOk = FALSE;
+            if ((g_sMvbData.u8RxDataFrameBuf[ MVB_CMD_IDX ] == cmd) &&                                     //jkpark 2026-01-05 응답 명령 확인.
+            	(g_sMvbData.u8RxDataFrameBuf[ MVB_LEN_IDX ] == 0x00u)){                                     //KKD 2025-11-26 Receive Len = 0
+            	readOk = TRUE;
+                break;							                                        //KKD 2025-11-26 (1) MVB Status OK
+            }
+        }
+    }
+
+    return readOk;    
+}
+#endif //MVB_UPDATE
+
+/* ==================== DMA 폴링 ==================== */
+void MVB_Receive_DMA_Poll(void)
+{
+#ifdef MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+    u16 currPos = 0;                         //jkpark 2025-12-31 데이터 인덱스 확인.
+
+    if( huart2.hdmarx->State != HAL_DMA_STATE_BUSY )
+    {
+        //jkpark 2026-01-07 DMA가 동작 상태가 아니면 재시작.
+        g_sMvbData.u16PrevPos	= 0;                                                      	//KKD 2025-11-26 init RxData Position
+        g_sMvbData.bRxOk		= 0;                                                      	//KKD 2025-11-26 Deinit Rx Finished Flag 
+
+        memset( g_sMvbData.u8RxDmaBuf, 0x00, MVB_RX_MAX );
+
+        HAL_UART_Receive_DMA(&huart2, g_sMvbData.u8RxDmaBuf, MVB_RX_MAX);                   //KKD 2025-11-28 DMA 시작
+    }
+    else
+    {
+        currPos = (((u16)MVB_RX_MAX) - (u16)(__HAL_DMA_GET_COUNTER(huart2.hdmarx)));                         //jkpark 2025-12-31 데이터 인덱스 확인.
+
+        while ( g_sMvbData.u16PrevPos != currPos ){                                         //jkpark 2025-12-31 저장된 인덱스와 현재 인덱스가 다르면 데이터 입력.
+            MVB_RxData_FrameParser( g_sMvbData.u8RxDmaBuf[ g_sMvbData.u16PrevPos++ ] );            
+            if (g_sMvbData.u16PrevPos >= (u16)MVB_RX_MAX){
+                g_sMvbData.u16PrevPos = 0;
+           	}
+        }
+    }
+    
+#else  //MVB_UPDATE
+    u16 currPos = (((u16)MVB_RX_MAX) - (u16)(__HAL_DMA_GET_COUNTER(huart2.hdmarx)));                //KKD 2025-11-26 수신데이터 갯수 확인
+    u16 i;
+
+    if (currPos != g_sMvbData.u16PrevPos){                                               //KKD 2025-11-28 신규 데이터 수신 확인
+        if (currPos > g_sMvbData.u16PrevPos){
+	        for (i = g_sMvbData.u16PrevPos; i < currPos; i++){
+	            MVB_RxData_FrameParser(g_sMvbData.u8RxDmaBuf[i]);
+	        }
+        }else{
+            for (i = g_sMvbData.u16PrevPos; i < MVB_RX_MAX; i++){                       //KKD 2025-11-28 버퍼 사이즈 Over -> Postion 이 0으로 
+                MVB_RxData_FrameParser(g_sMvbData.u8RxDmaBuf[i]);
+            }
+            for (i = 0; i < currPos; i++){
+                MVB_RxData_FrameParser(g_sMvbData.u8RxDmaBuf[i]);
+            }
+        }
+        g_sMvbData.u16PrevPos = currPos;                                                //KKD 2025-11-28 현재 DMA 수신버퍼의 Position 저장 (다음 수신시 다음 Pos부터 쌓기위해)
+        if (g_sMvbData.u16PrevPos >= MVB_RX_MAX){
+            g_sMvbData.u16PrevPos = 0;
+       	}
+    }
+#endif //MVB_UPDATE
+}
+
+/* ==================== 인터럽트 콜백 ==================== */
+
+void MVB_Rx_CallBack(UART_HandleTypeDef *huart)
+{
+    if ((huart->Instance == USART2) && (g_sMvbData.eRxMode == MVB_MODE_INTERRUPT)) {
+        u8 byte = g_sMvbData.u8RxDmaBuf[((u8)MVB_RX_MAX) - __HAL_DMA_GET_COUNTER(huart->hdmarx)];
+        MVB_RxData_FrameParser(byte);
+    }
+}
+
+/* ==================== 수신 프레임 분석 ================== */
+#ifdef MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+void MVB_RxData_ReParser( void )
+{
+#if 1
+    g_sMvbData.ePacket      = MVB_PACKET_START;
+    g_sMvbData.u16DataPos   = 0;
+#else
+    int nDataLen = g_sMvbData.u16DataPos;
+    int i;
+
+    g_sMvbData.eState       = MVB_STATE_START;
+    g_sMvbData.u16DataPos   = 0;
+    for( i = 1 ; i < nDataLen; i++ )
+    {
+        MVB_RxData_FrameParser( g_sMvbData.u8RxDataFrameBuf[i] );
+    }
+#endif    
+}
+#endif //MVB_UPDATE
+
+void MVB_RxData_FrameParser(u8 byte)
+{
+#ifdef MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+
+    switch( g_sMvbData.ePacket )
+    {
+        case MVB_PACKET_START:
+            if (byte == (u8)MVB_HEADER_MVB_DEV){                                                              //KKD 2025-11-26 RxData [0] == Start Check
+                g_sMvbData.ePacket = MVB_PACKET_CMD;
+                g_sMvbData.u16DataPos = 0;
+                g_sMvbData.u8RxDataFrameBuf[g_sMvbData.u16DataPos++] = byte;
+            }
+            break;
+        case MVB_PACKET_CMD:
+            g_sMvbData.ePacket = MVB_PACKET_LEN;
+            g_sMvbData.u8RxDataFrameBuf[g_sMvbData.u16DataPos++] = byte;
+            break;
+        case MVB_PACKET_LEN:
+            if( byte < (u8)MVB_RX_MAX ){
+                g_sMvbData.u8RxDataFrameBuf[g_sMvbData.u16DataPos++] = byte;
+                g_sMvbData.u16DataLen  = byte;
+            	g_sMvbData.u16StateLen = 0;
+                if( g_sMvbData.u16DataLen == 0u )
+                {
+                    g_sMvbData.ePacket = MVB_PACKET_CRC;
+                }
+                else
+                {
+                    g_sMvbData.ePacket = MVB_PACKET_DATA;
+                }
+            }
+            else
+            {
+                MVB_RxData_ReParser();                                              //jkpark 2025-12-31 Length가 오류면 Start를 다시 검색.            
+            }
+            break;
+        case MVB_PACKET_DATA:
+            g_sMvbData.u8RxDataFrameBuf[g_sMvbData.u16DataPos++] = byte;
+            g_sMvbData.u16StateLen++;
+            if( g_sMvbData.u16StateLen >= g_sMvbData.u16DataLen )
+            {
+                g_sMvbData.u16StateLen = 0;
+                g_sMvbData.ePacket = MVB_PACKET_CRC;
+            }
+            break;
+        case MVB_PACKET_CRC:
+            g_sMvbData.u8RxDataFrameBuf[g_sMvbData.u16DataPos++] = byte;
+            g_sMvbData.u16StateLen++;
+            if( g_sMvbData.u16StateLen == (u16)MVB_CRC_LEN )
+            {
+                u16 crc_rx = ((u16)g_sMvbData.u8RxDataFrameBuf[ g_sMvbData.u16DataPos - 2u ] << 8) | g_sMvbData.u8RxDataFrameBuf[ g_sMvbData.u16DataPos - 1u ];
+                u16 crc_calc = MVB_Crc16(&g_sMvbData.u8RxDataFrameBuf[MVB_LEN_IDX], (int)(u16)(g_sMvbData.u16DataLen + (u16)MVB_LEN_LEN));
+
+                if( crc_rx == crc_calc ){
+                    g_sMvbData.u16StateLen = 0;
+                    g_sMvbData.ePacket = MVB_PACKET_END;
+                }
+                else
+                {
+                    MVB_RxData_ReParser();                                              //jkpark 2025-12-31 CRC가 오류면 Start를 다시 검색.
+                }
+            }
+            break;
+        case MVB_PACKET_END:    
+            if ( byte == (u8)MVB_ENDER ){                                                              //KKD 2025-11-26 RxData [0] == Start Check
+                g_sMvbData.ePacket = MVB_PACKET_START;
+                g_sMvbData.u16DataPos = 0;
+                g_sMvbData.u8RxDataFrameBuf[g_sMvbData.u16DataPos++] = byte;
+                g_sMvbData.bRxOk = 1;
+            }
+            else
+            {
+                MVB_RxData_ReParser();                                              //jkpark 2025-12-31 MVB_ENDER가 오류면 Start를 다시 검색.
+            }
+            break;
+        default:
+            MVB_RxData_ReParser();                                                  //jkpark 2025-12-31 g_sMvbData.eState가 오류면 초기화 하고 Start를 다시 검색.            
+            break;
+    }
+
+#else  //MVB_UPDATE
+    static u16 idx = 0;
+    static u8 started = 0;
+
+    if (!started){
+        if (byte == 0xAB){                                                              //KKD 2025-11-26 RxData [0] == Start Check
+            started = 1;
+            idx = 0;
+            g_sMvbData.u8RxDataFrameBuf[idx++] = byte;
+        }return;
+    }
+
+    g_sMvbData.u8RxDataFrameBuf[idx++] = byte;                                          //KKD 2025-11-26 RxData Set
+
+    if (byte == 0xEE){                                                                  //KKD 2025-11-26 RxData [End] == End Check
+        if (idx >= 6){
+            g_sMvbData.bRxOk = 1;
+        }
+        started = 0;
+        idx = 0;
+    }
+
+    if (idx >= MVB_RX_MAX){
+        started = 0;
+        idx = 0;
+    }
+#endif //MVB_UPDATE
+}
+
+/* ==================== 프레임 처리 ==================== */
+void MVB_ProcessFrame(u8 *buf)
+{
+    u8 cmd = buf[ MVB_CMD_IDX ];
+    u8 len = buf[ MVB_LEN_IDX ];
+#ifdef MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+#else  //MVB_UPDATE
+    u16 crc_rx = ((u16)buf[3 + len] << 8) | buf[4 + len];
+    u16 crc_calc = MVB_Crc16(&buf[2], len + 1);
+
+    if (crc_rx != crc_calc) {return;}
+#endif //MVB_UPDATE
+
+    MVB_HandleCommand(cmd, &buf[ MVB_DATA_IDX ], len);                                               //KKD 2025-11-26 Make ing....
+}
+
+/* ==================== 수신 명령 처리 ==================== */
+void MVB_HandleCommand(u8 cmd, u8 *data, u8 len)
+{
+    switch (cmd){
+    case CMD_CHK_REDY:
+        break;
+    case CMD_SET_CYCL:
+        break;
+    case CMD_SET_PORT:
+        break;
+    case CMD_TX_MKDAT:
+    	break;
+    default:
+        break;
+    }
+}
+
+/* ==================== 초기 시퀀스 ==================== */
+u8 MVB_InitSequence(void)
+{
+#ifdef MVB_UPDATE    //2026-01-05   jkpark  MVB코드 수정.
+    u8	data[32]    = {0};
+    u8	portPos	    = 0;
+    u16	portsta	    = (u16)0x10;
+ 	u16	cyctim	    = (u16)100;                                                              //KKD 2025-11-26 주기 설정  1bit/1ms
+    u8  retValue    = 0;
+
+//    memset( g_sMvbData.u8RxDmaBuf, 0x00, MVB_RX_MAX);
+
+    retValue = MVB_SendCheckPoll( CMD_CHK_REDY, NULL, 0, 500 );					        //KKD 2025-11-26 (1) MVB 보드 상태 체크
+    if( retValue != TRUE ){return (u8)-1;}                                                  //jkpark 2025-12-31 데이터가 수신되지 않았으면 다음 명령 실행 불가.
+
+    data[0] = (u8)BYTE_15_08( cyctim );
+    data[1] = (u8)BYTE_07_00( cyctim );
+
+    retValue = MVB_SendCheckPoll( CMD_SET_CYCL, data, 2, 500 );                         //KKD 2025-11-26 (2) 주기 설정 100ms
+    if( retValue != TRUE ){return (u8)-1;}                                                  //jkpark 2025-12-31 데이터가 수신되지 않았으면 다음 명령 실행 불가.
+
+    for (u8 i = 0; i < (u8)MVB_PORT_COUNT_3 ; i++){                                         //KKD 2025-11-26 포트 설정 (내포트, 수신포트 같이 설정)
+        data[portPos++] = MVB_TYPE_SOURCE;  		                                    //KKD 2025-11-26 Source Type
+        data[portPos++] = 0x04;  		                                           		//KKD 2025-11-26 Source F-Code 4(32byte)
+        data[portPos++] = (u8)BYTE_15_08( portsta );		 	                        	//KKD 2025-11-26 Source Port No High
+        data[portPos++] = (u8)BYTE_07_00( portsta );		                               			//KKD 2025-11-26 Source Port No Low
+    	portsta = i;
+	}
+	
+	data[portPos++] = MVB_TYPE_SINK;                                                    //KKD 2025-11-26 Sink Type
+	data[portPos++] = 0x04;                                                             //KKD 2025-11-26 Sink F-Code
+	data[portPos++] = 0x10;                                                             //KKD 2025-11-26 Sink Port No High
+	data[portPos++] = 0x04;                                                             //KKD 2025-11-26 Sink Port No Low
+	
+    retValue = MVB_SendCheckPoll( CMD_SET_PORT, data, (portPos), 500 );                 //KKD 2025-11-26 (3) 포트설정 데이터 전송
+    if( retValue != TRUE ){
+    	return (u8)-1;
+    }                                                  //jkpark 2025-12-31 데이터가 수신되지 않았으면 다음 명령 실행 불가.
+
+    return 0;
+#else  //MVB_UPDATE
+    u8	data[32] = {0};
+    u8	cmd		= 0;
+    u8	len		= 0;
+    u8	portCnt	= 3;
+    u8	portPos	= 0;
+    u16	portsta	= 0x10;
+ 	u16	cyctim	= 100;                                                              	//KKD 2025-11-26 주기 설정  1bit/1ms
+    u32	start	= 0;
+  
+    MVB_SendFrame(CMD_CHK_REDY, NULL, 0);					                           	//KKD 2025-11-26 (1) MVB 보드 상태 체크
+    start = HAL_GetTick();
+//    while (HAL_GetTick() - (start < (u32)500))                                         	//KKD 2025-11-26 (1) 상태 체크에대한 응답 확인
+    while ( ( HAL_GetTick() - start ) < (u32)500 )                                         	//KKD 2025-11-26 (1) 상태 체크에대한 응답 확인 //jkpark 수정.
+    {
+        MVB_Receive_DMA_Poll();
+        if (g_sMvbData.bRxOk == TRUE)
+        {
+//            g_sMvbData.bRxOk = FALSE;
+            MVB_ProcessFrame(g_sMvbData.u8RxDataFrameBuf);
+            if (g_sMvbData.u8RxDataFrameBuf[1] == 0x11 &&                               //KKD 2025-11-26 Receive CMD
+            	g_sMvbData.u8RxDataFrameBuf[2] == 0x00){                                //KKD 2025-11-26 Receive Len = 0
+                break;							                                        //KKD 2025-11-26 (1) MVB Status OK
+            }
+        }
+    }
+    if( g_sMvbData.bRxOk != TRUE ){return -1;}                                             //jkpark 2025-12-31 데이터가 수신되지 않았으면 다음 명령 실행 불가.
+    else{ g_sMvbData.bRxOk = FALSE; }
+
+    data[0] = (cyctim >> 8) & 0xFF;
+    data[1] = (cyctim & 0xFF);
+    MVB_SendFrame(CMD_SET_CYCL, data, 2);                                               //KKD 2025-11-26 (2) 주기 설정 100ms
+    start = HAL_GetTick();                                                              //KKD 2025-11-26 timer start
+//    while (HAL_GetTick() - (start < (u32)500))                                          //KKD 2025-11-26 (2)주기 설정에대한 응답 확인
+    while ( ( HAL_GetTick() - start ) < (u32)500 )                                      //KKD 2025-11-26 (2)주기 설정에대한 응답 확인 //jkpark 수정.
+    {
+        MVB_Receive_DMA_Poll();
+        if (g_sMvbData.bRxOk == TRUE)
+        {
+//            g_sMvbData.bRxOk = FALSE;
+            MVB_ProcessFrame(g_sMvbData.u8RxDataFrameBuf);
+            if (g_sMvbData.u8RxDataFrameBuf[1] == 0x21 &&                               //KKD 2025-11-26 Receive CMD
+            	g_sMvbData.u8RxDataFrameBuf[2] == 0x00) {                               //KKD 2025-11-26 Receive Len = 0
+                break;                                                                  //KKD 2025-11-26 (2) 주기설정 완료 응답 OK
+            }
+        }
+    }
+    if( g_sMvbData.bRxOk != TRUE ){return -2;}                                             //jkpark 2025-12-31 데이터가 수신되지 않았으면 다음 명령 실행 불가.
+    else{ g_sMvbData.bRxOk = FALSE; }
+
+    for (u8 i = 0; i < portCnt; i++){                                                   //KKD 2025-11-26 포트 설정 (내포트, 수신포트 같이 설정)
+        data[portPos++] = 0x08;  		                                           		//KKD 2025-11-26 Source Type
+        data[portPos++] = 0x04;  		                                           		//KKD 2025-11-26 Source F-Code 4(32byte)
+        data[portPos++] = (portsta & 0xff) >> 8;		 	                        	//KKD 2025-11-26 Source Port No High
+        data[portPos++] = (portsta & 0xff);		                               			//KKD 2025-11-26 Source Port No Low
+    	portsta = i;
+	}
+	
+	data[portPos++] = 0x04;                                                             //KKD 2025-11-26 Sink Type
+	data[portPos++] = 0x04;                                                             //KKD 2025-11-26 Sink F-Code
+	data[portPos++] = 0x10;                                                             //KKD 2025-11-26 Sink Port No High
+	data[portPos++] = 0x04;                                                             //KKD 2025-11-26 Sink Port No Low
+	
+	MVB_SendFrame(CMD_SET_PORT, data, (portPos));                                       //KKD 2025-11-26 (3) 포트설정 데이터 전송
+
+    start = HAL_GetTick();
+//    while ( HAL_GetTick() - (start < 500))                                               //KKD 2025-11-26 (3) 포트설정에 대한 응답 확인
+    while ( ( HAL_GetTick() - start ) < 500 )                                               //KKD 2025-11-26 (3) 포트설정에 대한 응답 확인
+    {
+        MVB_Receive_DMA_Poll();
+        if (g_sMvbData.bRxOk == TRUE)
+        {
+//            g_sMvbData.bRxOk = FALSE;
+            MVB_ProcessFrame(g_sMvbData.u8RxDataFrameBuf);
+            if (g_sMvbData.u8RxDataFrameBuf[1] == 0x31 &&
+            	g_sMvbData.u8RxDataFrameBuf[2] == 0x00){
+                break;										                            //KKD 2025-11-26 Port Set OK
+            }
+        }
+    }
+    if( g_sMvbData.bRxOk != TRUE ){return -3;}                                             //jkpark 2025-12-31 데이터가 수신되지 않았으면 다음 명령 실행 불가.
+    else{ g_sMvbData.bRxOk = FALSE; }
+
+    return 0;
+#endif //MVB_UPDATE
+
+}
+
+msStatus_t MVB_TimerProc( void )
+{
+    switch( g_sMvbData.eState )
+    {
+        case MVB_STATE_OFF_DELAY:
+            g_sMvbData.eState = MVB_STATE_ON;
+            break;
+        case MVB_STATE_ON_DELAY:
+            g_sMvbData.eState = MVB_STATE_INIT;
+            break;
+        default:
+            break;
+    }
+    return MS_FALSE;                                                                       //jkpark 2026-01-06 FALSE는 한번 수행하고 Timer종료.
+}
+
+void MVB_Proc(void)
+{
+#ifdef MVB_UPDATE    //2026-01-06   jkpark  MVB코드 수정.
+	//static u16 chktimeout = 0;
+    u8 retValue = (u8)-1;
+	u32 now = 0;
+	g_su32tmsLastTime = HAL_GetTick();
+    switch( g_sMvbData.eState )
+    {
+        case MVB_STATE_OFF:
+            GPIO_DOut_MVB(FALSE);                                                       //jkpark 2026-01-06 OFF하고 완전히 꺼질 딜레이 필요.
+            TimerAdd(500, MVB_TimerProc, NULL);
+            g_sMvbData.eState = MVB_STATE_OFF_DELAY;
+            break;
+            
+        case MVB_STATE_OFF_DELAY:
+            break;
+            
+        case MVB_STATE_ON:
+            GPIO_DOut_MVB(TRUE);                                                        //jkpark 2026-01-06 ON하고 딜레이 후 Init필요.
+            TimerAdd(2000, MVB_TimerProc, NULL);
+            g_sMvbData.eState = MVB_STATE_ON_DELAY;
+            break;
+            
+        case MVB_STATE_ON_DELAY:
+            break;
+            
+        case MVB_STATE_INIT:
+            retValue = MVB_InitSequence();                                              //jkpark 2026-01-05 MVB가 통신되지 않으면 동작 중지.
+            if( retValue == 0u )
+            {
+                g_sMvbData.eState = MVB_STATE_IDLE;                                     //jkpark 2026-01-06 초기화가 정상이면 IDLE상태.
+            }
+            else
+            {
+                g_sMvbData.eState = MVB_STATE_OFF;                                      //jkpark 2026-01-06 초기화 실패면 MVB재부팅후 재시도.
+            }
+            break;
+        default:
+        case MVB_STATE_IDLE:
+            if (g_sMvbData.eRxMode == MVB_MODE_POLLING){
+                MVB_Receive_DMA_Poll();
+        	}else{
+        		//callback proc
+        	}
+        	
+            if (g_sMvbData.bRxOk == TRUE){
+                g_sMvbData.bRxOk = FALSE;
+				now = HAL_GetTick();
+				if((now -g_su32tmsLastTime) >= MVB_TIMEOUT_MS){
+					g_sMvbData.bCommTimeout = TRUE;
+				}
+                MVB_ProcessFrame(g_sMvbData.u8RxDataFrameBuf);
+            }break;
+    }
+#else  //MVB_UPDATE
+    if (g_sMvbData.eRxMode == MVB_MODE_POLLING){
+        MVB_Receive_DMA_Poll();
+	}else{
+		//callback proc
+	}
+	
+    if (g_sMvbData.bRxOk == TRUE){
+        g_sMvbData.bRxOk = FALSE;
+        MVB_ProcessFrame(g_sMvbData.u8RxDataFrameBuf);
+    }
+#endif //MVB_UPDATE
+}
+u8 MVB_GetTimeoutStatus(void)
+{
+	return (u8)g_sMvbData.bCommTimeout;
+}
+

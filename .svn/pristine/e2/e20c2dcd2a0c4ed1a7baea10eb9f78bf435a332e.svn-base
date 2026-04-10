@@ -1,0 +1,52 @@
+﻿/*=================================================================================================*
+*       Header File                                                                     *
+*==================================================================================================*
+*       [Project]    : ms_810P(CAN monitoring)	        	                            *
+*       [Version]    : 1.0                                                              *
+*       [Start]      : 2026-01-12                                                       *
+*       [Inventor]   : www.misum.co.kr                                                  *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                   *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_can_mon.h
+\author             KKD
+\date               2026-01-12 
+\brief              CAN monitoring
+*********************************************
+* History:
+* 2026-01-12     v0.01    KKD    Create
+*==================================================================================================*/
+
+#ifndef __MS_CAN_MON_H_
+#define __MS_CAN_MON_H_
+
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_config.h"
+#include "ms_can.h"
+#include "ms_relay.h"
+//#include <ms_main.h>
+
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+
+void  Can_Proc(void);
+void	Can_Tx_01_TimeDate(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan);
+void	Can_Tx_02_Summery(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan);
+void	Can_Tx_03_Summery_PV(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan);
+void	Can_Tx_04_Summery_CV(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan);
+void	Can_Tx_05_Summery_TH(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan);
+void 	Can_Tx_06_AlarmDet(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan);
+void 	Can_Tx_07_AdCvComFail(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8SlvPos);
+void 	Can_Tx_08_AdThComFail(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8SlvPos);
+
+void	Can_Tx_Cv(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos);
+void 	Can_Tx_Th(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos);
+
+#endif /* MS_CAN_MON_H_ */

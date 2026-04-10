@@ -1,0 +1,135 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_gpio.h
+\author             KKD
+\date               2025-11-21 
+\brief              GPIO 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_GPIO_H__
+#define __MS_GPIO_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+/* Exported macro ----------------------------------------------------------------------------------*/
+#define GPIO_READ_ACTIVE_LOW(port, pin)   (((port)->IDR & (pin)) ? 0U : 1U)		// High ==  Normal
+#define GPIO_READ_ACTIVE_HIGH(port, pin)   (((port)->IDR & (pin)) ? 1U : 0U)	// Low == Normal
+#define GPIO_WRITE(port, pin, val)   ((port)->BSRR = ((val)==0U ? ((pin)<<16) : (pin)))
+#define GPIO_TOGGLE(port,pin)   ((port)->ODR ^= (pin))
+
+/* Exported typedef --------------------------------------------------------------------------------*/
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+
+/* OUT_EN_422 */
+static inline void GPIO_DOut_EN422(BOOL bOnOff)					{ GPIO_WRITE(GPIOF, GPIO_PIN_3, bOnOff); }
+
+/* OUT_EN_485 */
+static inline void GPIO_DOut_EN485(BOOL bOnOff)					{ GPIO_WRITE(GPIOB, GPIO_PIN_14, bOnOff); }
+
+/* OUT_sensor 13V on */
+static inline void GPIO_DOut_GAS(BOOL bOnOff)					{ GPIO_WRITE(GPIOF, GPIO_PIN_5, bOnOff); }
+static inline void GPIO_DOut_CAB(BOOL bOnOff)					{ GPIO_WRITE(GPIOF, GPIO_PIN_6, bOnOff); }
+static inline void GPIO_DOut_IMD(BOOL bOnOff)					{ GPIO_WRITE(GPIOF, GPIO_PIN_7, bOnOff); }
+static inline void GPIO_DOut_MVB(BOOL bOnOff)					{ GPIO_WRITE(GPIOF, GPIO_PIN_8, bOnOff); }
+
+/* OUT_bms status led  */
+static inline void GPIO_DOut_LYel_VIT(BOOL bOnOff)				{ GPIO_WRITE(GPIOF, GPIO_PIN_12,  bOnOff); }
+static inline void GPIO_DOut_LRed_DET(BOOL bOnOff)				{ GPIO_WRITE(GPIOF, GPIO_PIN_13,  bOnOff); }
+static inline void GPIO_DOut_LGre_CHG(BOOL bOnOff)				{ GPIO_WRITE(GPIOF, GPIO_PIN_14, bOnOff); }
+static inline void GPIO_DOut_LOrg_DCH(BOOL bOnOff)				{ GPIO_WRITE(GPIOF, GPIO_PIN_15, bOnOff); }
+
+/* OUT_bms status led toggle */
+static inline void GPIO_DOut_LYel_VIT_Toggle(void)	{ HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_12);}
+static inline void GPIO_DOut_LRed_DET_Toggle(void)	{ HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_13);}
+static inline void GPIO_DOut_LGre_CHG_Toggle(void)	{ HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_14);}
+static inline void GPIO_DOut_LOrg_DCH_Toggle(void)	{ HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_15);}
+
+/* OUT_spi 2ea chip select */
+static inline void GPIO_DOut_SPI1_CS1(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_0,  bOnOff); }
+static inline void GPIO_DOut_SPI1_CS2(BOOL bOnOff)				{ GPIO_WRITE(GPIOE, GPIO_PIN_1,  bOnOff); }
+static inline void GPIO_DOut_SPI2_CS1(BOOL bOnOff)   			{ GPIO_WRITE(GPIOC, GPIO_PIN_14, bOnOff); }
+static inline void GPIO_DOut_SPI2_CS2(BOOL bOnOff)   			{ GPIO_WRITE(GPIOC, GPIO_PIN_15, bOnOff); }
+
+/* OUT_bms fault - hard wire signal */
+static inline void GPIO_DOut_BMS_FULT(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_2, bOnOff); }
+
+/* ext led control */
+static inline void GPIO_DOut_ON_DGRE(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_3, bOnOff); }
+static inline void GPIO_DOut_ON_DRED(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_4, bOnOff); }
+static inline void GPIO_DOut_ON_RED(BOOL bOnOff)   				{ GPIO_WRITE(GPIOE, GPIO_PIN_5, bOnOff); }
+
+/* OUT_battery relay control */
+static inline void GPIO_DOut_MTOP_RLY(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_7, bOnOff); }
+static inline void GPIO_DOut_MBTM_RLY(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_8,  bOnOff); }
+static inline void GPIO_DOut_MPRE_RLY(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_9,  bOnOff); }
+
+static inline void GPIO_DOut_BPRE_RLY(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_10, bOnOff); }
+static inline void GPIO_DOut_BTOP_RLY(BOOL bOnOff)   			{ GPIO_WRITE(GPIOE, GPIO_PIN_11, bOnOff); }
+static inline void GPIO_DOut_BBTM_RLY(BOOL bOnOff)				{ GPIO_WRITE(GPIOE, GPIO_PIN_12, bOnOff); }
+
+
+/* OUT_debug test pin */
+static inline void GPIO_DOut_TP1(BOOL bOnOff)   				{ GPIO_WRITE(GPIOA, GPIO_PIN_7, bOnOff); }
+static inline void GPIO_DOut_TP2(BOOL bOnOff)   				{ GPIO_WRITE(GPIOB, GPIO_PIN_12, bOnOff); }
+static inline void GPIO_DOut_TP3(BOOL bOnOff)   				{ GPIO_WRITE(GPIOB, GPIO_PIN_13, bOnOff); }
+
+static inline void GPIO_DOut_TP4(BOOL bOnOff)   				{ GPIO_WRITE(GPIOB, GPIO_PIN_15, bOnOff); }
+static inline void GPIO_DOut_TP5(BOOL bOnOff)   				{ GPIO_WRITE(GPIOF, GPIO_PIN_10, bOnOff); }
+static inline void GPIO_DOut_TP6(BOOL bOnOff)   				{ GPIO_WRITE(GPIOG, GPIO_PIN_14, bOnOff); }
+
+
+/* IN_battery Main fuse check */
+static inline u8 GPIO_DIN_MTOP_FUS(void)           				{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_2); } 
+static inline u8 GPIO_DIN_MBTM_FUS(void)           				{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_3); }
+
+/* IN_battery BTMS bottomfuse check */
+static inline u8 GPIO_DIN_BBTM_FUS(void)	         				{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_6); }
+
+/* IN_battery relay check */
+static inline u8 GPIO_DIN_MTOP_RLY(void)           					{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_4); }
+static inline u8 GPIO_DIN_MBTM_RLY(void)  				       		{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_5); }
+static inline u8 GPIO_DIN_BTOP_RLY(void)           					{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_7); }
+static inline u8 GPIO_DIN_BBTM_RLY(void)           					{ return GPIO_READ_ACTIVE_LOW(GPIOG, GPIO_PIN_8); }
+
+/* IN_ext charge in check */
+static inline u8 GPIO_DIN_ON_CHG(void)             					{ return GPIO_READ_ACTIVE_LOW(GPIOD, GPIO_PIN_9);}
+
+/* IN_ext high voltage(battery) check */
+static inline u8 GPIO_DIN_ON_HVB(void)             				{ return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_10);}
+
+/* IN_fire sensor check */
+static inline u8 GPIO_DIN_LHD_Open(void)           				{ return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_12);}
+static inline u8 GPIO_DIN_LHD_Short(void)          				{ return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_13);}
+
+
+//Toggle
+static inline void GPIO_DOut_Tp1_toggle(void)					{ GPIO_TOGGLE(GPIOA, GPIO_PIN_7); }
+static inline void GPIO_DOut_Tp2_toggle(void)					{ GPIO_TOGGLE(GPIOB, GPIO_PIN_15); }
+static inline void GPIO_DOut_Tp3_toggle(void)					{ GPIO_TOGGLE(GPIOF, GPIO_PIN_10); }
+static inline void GPIO_DOut_Tp4_toggle(void)					{ GPIO_TOGGLE(GPIOG, GPIO_PIN_14); }
+static inline void GPIO_DOut_Rly_toggle(void)					{ GPIO_TOGGLE(GPIOD, GPIO_PIN_0); }
+
+
+
+u8 Gpio_Hv_In(void);
+u8 Gpio_Ch_In(void);
+void Gpio_Fault_Out(void);
+void Gpio_Led(void);
+void Gpio_Proc(void);
+void Gpio_Init(void);
+
+
+#endif //__MS_GPIO_H__

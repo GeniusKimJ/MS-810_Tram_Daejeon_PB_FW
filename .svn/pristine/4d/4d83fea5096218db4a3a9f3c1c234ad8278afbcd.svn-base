@@ -1,0 +1,275 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_btms.c
+\author             KKD
+\date               2025-11-21 
+\brief              BTMS를 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <stdint.h>
+#include "ms_btms.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+#define BTMS_RX_MAX         200
+#define BTMS_TX_MAX         200
+
+#define BTMS_STX            0x02
+#define BTMS_ETX            0x03
+
+#define BTMS_LEN_IDX        1
+#define BTMS_DATA_IDX       2
+
+#define BTMS_STX_LEN        1
+#define BTMS_LEN_LEN        1
+#define BTMS_CRC_LEN        2
+#define BTMS_ETX_LEN        1
+#define BTMS_MIN_LEN        ( BTMS_STX_LEN + MVB_LEN_LEN + BTMS_CRC_LEN + BTMS_ETX_LEN )
+
+#define BTMS_RX_DATA_MAX    250
+
+#define BTMS_STARTn_IDX         5
+#define BTMS_TARGET_TEMPn_IDX   11
+#define BTMS_STATU_IDX   11
+
+
+// CRC-16/IBM-3740 parameters
+#define CRC16_IBM3740_POLY   0x1021U
+#define CRC16_IBM3740_INIT   0xFFFFU
+#define CRC16_IBM3740_XOROUT 0x0000U
+
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+
+typedef struct {
+    u8 u8RxDmaBuf[BTMS_RX_MAX];
+    u8 u8RxDataFrameBuf[BTMS_RX_MAX];
+    volatile BOOL bRxOk;
+    u16 u16PrevPos;
+
+    BTMS_PacketType ePacket;
+    BTMS_CmdType    eState;
+    u16 u16DataPos;
+    u16 u16DataLen;
+    u16 u16StateLen;
+
+} sBTMS_DataType;
+
+/* Private variables ------------------------------------------------------------------------------*/
+sBTMS_DataType gBTMS_Data;
+u8 u8TxBuf[BTMS_TX_MAX];
+/* Private function prototypes --------------------------------------------------------------------*/
+void BTMS_RxFrameParser(u8 readByte);
+u16 crc16_ibm3740(const u8 *data, u32 len);
+/* Private functions ------------------------------------------------------------------------------*/
+
+
+
+
+void BTMS_Init(void)
+{
+    memset( &gBTMS_Data, 0x00, sizeof( sBTMS_DataType ));
+    GPIO_DOut_EN485(TRUE);
+	HAL_UART_Receive_DMA(&huart3, gBTMS_Data.u8RxDmaBuf, sizeof(gBTMS_Data.u8RxDmaBuf));			// uart4 init (display)
+}
+
+void BTMS_Proc(void)
+{
+    if( gBTMS_Data.bRxOk == TRUE )
+    {
+    
+    }
+/*
+ //jkpark 2026-01-14 Tx Test
+    int txLen = 0;
+
+    txLen = sprintf(u8TxBuf,"%10d\r\n",GetStmAdc15bit(ID_ADIN4_CPV));
+
+    HAL_UART_Transmit_IT(&huart3, u8TxBuf, txLen);
+*/    
+}
+
+void BTMS_Receive_DMA_Poll(void)
+{
+    u16 currPos = 0;                         //jkpark 2025-12-31 데이터 인덱스 확인.
+
+    if( huart3.hdmarx->State != HAL_DMA_STATE_BUSY )
+    {
+        //jkpark 2026-01-07 DMA가 동작 상태가 아니면 재시작.
+        gBTMS_Data.u16PrevPos	= 0;                                                      	//KKD 2025-11-26 init RxData Position
+        gBTMS_Data.bRxOk		= 0;                                                      	//KKD 2025-11-26 Deinit Rx Finished Flag 
+
+        memset( gBTMS_Data.u8RxDmaBuf, 0x00, BTMS_RX_MAX );
+
+        HAL_UART_Receive_DMA(&huart3, gBTMS_Data.u8RxDmaBuf, BTMS_RX_MAX);                   //KKD 2025-11-28 DMA 시작
+    }
+    else
+    {
+        currPos = (((u16)BTMS_RX_MAX) - (u16)(__HAL_DMA_GET_COUNTER(huart3.hdmarx)));                         //jkpark 2025-12-31 데이터 인덱스 확인.
+
+        while ( gBTMS_Data.u16PrevPos != currPos ){                                         //jkpark 2025-12-31 저장된 인덱스와 현재 인덱스가 다르면 데이터 입력.
+            BTMS_RxFrameParser( gBTMS_Data.u8RxDmaBuf[ gBTMS_Data.u16PrevPos++ ] );
+            if (gBTMS_Data.u16PrevPos >= BTMS_RX_MAX){
+                gBTMS_Data.u16PrevPos = 0;
+           	}
+        }
+    }
+
+}
+
+void BTMS_RxData_ReParser( void )
+{
+    gBTMS_Data.ePacket      = BTMS_PACKET_STX;
+    gBTMS_Data.u16DataPos   = 0;
+}
+
+void BTMS_RxFrameParser(u8 readByte){
+
+    switch( gBTMS_Data.ePacket )
+    {
+        case BTMS_PACKET_STX:
+            if (readByte == BTMS_STX ){                                                              //KKD 2025-11-26 RxData [0] == Start Check
+                gBTMS_Data.ePacket = BTMS_PACKET_LEN;
+                gBTMS_Data.u16DataPos = 0;
+                gBTMS_Data.u8RxDataFrameBuf[gBTMS_Data.u16DataPos++] = readByte;
+            }
+            break;
+        case BTMS_PACKET_LEN:
+            if( readByte <= BTMS_RX_DATA_MAX ){
+                gBTMS_Data.u8RxDataFrameBuf[gBTMS_Data.u16DataPos++] = readByte;
+                gBTMS_Data.u16DataLen  = readByte;
+            	gBTMS_Data.u16StateLen = 0;
+                if( gBTMS_Data.u16DataLen == BTMS_CRC_LEN )
+                {
+                    gBTMS_Data.ePacket = BTMS_PACKET_CRC;
+                }
+                else
+                {
+                    gBTMS_Data.ePacket = BTMS_PACKET_DATA;
+                }
+            }
+            else
+            {
+                BTMS_RxData_ReParser();                                              //jkpark 2025-12-31 Length가 오류면 Start를 다시 검색.            
+            }
+            break;
+        case BTMS_PACKET_DATA:
+            gBTMS_Data.u8RxDataFrameBuf[gBTMS_Data.u16DataPos++] = readByte;
+            gBTMS_Data.u16StateLen++;
+            if( gBTMS_Data.u16StateLen >= gBTMS_Data.u16DataLen )
+            {
+                gBTMS_Data.u16StateLen = 0;
+                gBTMS_Data.ePacket = BTMS_PACKET_CRC;
+            }
+            break;
+        case BTMS_PACKET_CRC:
+            gBTMS_Data.u8RxDataFrameBuf[gBTMS_Data.u16DataPos++] = readByte;
+            gBTMS_Data.u16StateLen++;
+            if( gBTMS_Data.u16StateLen == BTMS_CRC_LEN )
+            {
+                u16 crc_rx = ((u16)gBTMS_Data.u8RxDataFrameBuf[ gBTMS_Data.u16DataPos - 2 ] << 8) | gBTMS_Data.u8RxDataFrameBuf[ g_sMvbData.u16DataPos - 1 ];
+                u16 crc_calc = crc16_ibm3740((const u8 *)&gBTMS_Data.u8RxDataFrameBuf[BTMS_LEN_IDX], (u32)(gBTMS_Data.u16DataLen + BTMS_LEN_LEN - BTMS_CRC_LEN) );
+
+                if( crc_rx == crc_calc ){
+                    gBTMS_Data.u16StateLen = 0;
+                    gBTMS_Data.ePacket = BTMS_PACKET_ETX;
+                }
+                else
+                {
+                    BTMS_RxData_ReParser();                                              //jkpark 2025-12-31 CRC가 오류면 Start를 다시 검색.
+                }
+            }
+            break;
+        case BTMS_PACKET_ETX:    
+            if ( readByte == BTMS_PACKET_ETX ){                                                              //KKD 2025-11-26 RxData [0] == Start Check
+                gBTMS_Data.ePacket = BTMS_PACKET_STX;
+                gBTMS_Data.u16DataPos = 0;
+                gBTMS_Data.u8RxDataFrameBuf[gBTMS_Data.u16DataPos++] = readByte;
+                gBTMS_Data.bRxOk = 1;
+            }
+            else
+            {
+                BTMS_RxData_ReParser();                                              //jkpark 2025-12-31 MVB_ENDER가 오류면 Start를 다시 검색.
+            }
+            break;
+        default:
+            BTMS_RxData_ReParser();                                                  //jkpark 2025-12-31 g_sMvbData.eState가 오류면 초기화 하고 Start를 다시 검색.            
+            break;
+    }
+}
+
+void BTMS_CmdProc(const uint8_t *data, uint32_t len)
+{
+    const char *aCmdStr[]= 
+        {   "START",
+            "Target_Temp",
+            "Status",
+            "Temp_Status",
+            "Humidity_Status",
+            NULL
+        };
+    int cmdID = 0;
+
+    for( cmdID = 0 ; aCmdStr[ cmdID ] != NULL; cmdID++ )
+    {
+        if( strncmp( (const char *)data,aCmdStr[ cmdID ],strlen(aCmdStr[ cmdID ])) == 0 )
+        {
+            break;
+        }
+    }
+
+    switch( cmdID )
+    {
+        case BTMS_CMD_START:
+            break;
+        case BTMS_CMD_TARGET_TEMP:
+            break;
+        case BTMS_CMD_STATUS:
+            break;
+        case BTMS_CMD_TEMP_STATUS:
+            break;
+        case BTMS_CMD_HUMIDITY_STATUS:
+            break;
+        default:
+            break;
+    }
+
+    return;
+}
+
+#if 0
+u16 crc16_ibm3740(const u8 *data, u32 len)
+{
+    uint16_t crc = CRC16_IBM3740_INIT;
+
+    while (len--)
+    {
+        crc ^= ((uint16_t)*data++) << 8U;
+
+        for (int i = 0; i < 8; ++i)
+        {
+            if (crc & 0x8000U)
+            {
+                crc = (uint16_t)((crc << 1) ^ CRC16_IBM3740_POLY);
+            }
+            else
+            {
+                crc <<= 1;
+            }
+        }
+    }
+
+    return (uint16_t)(crc ^ CRC16_IBM3740_XOROUT);
+}
+#endif
+

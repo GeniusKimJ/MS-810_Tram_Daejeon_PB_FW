@@ -1,0 +1,88 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Mcu Adc)                                           			  *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                               		   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_adc.h
+\author             KKD
+\date               2025-11-24 
+\brief              Mcu Adc
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_ADC_H__
+#define __MS_ADC_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define ADC_REF_MV        	(3300.0f)
+#define ADC_15BIT_MAX     	(32767.0f)
+
+#define ADC_LSB_15BIT_MV  	(ADC_REF_MV / ADC_15BIT_MAX)
+
+#define AUX33_GAIN        	(0.3197279f)
+#define CONST_AUX33_15BIT 	(ADC_LSB_15BIT_MV / AUX33_GAIN)	// [mV / count]
+
+#define AUX5_GAIN         	(0.3197279f)
+#define CONST_AUX5_15BIT  	(ADC_LSB_15BIT_MV / AUX5_GAIN)	// [mV / count]
+
+#define AUX13_GAIN        	(0.153f)
+#define CONST_AUX13_15BIT 	(ADC_LSB_15BIT_MV / AUX13_GAIN)	// [mV / count]
+
+#define AUX24_GAIN        	(0.0874786f)
+#define CONST_AUX24_15BIT 	(ADC_LSB_15BIT_MV / AUX24_GAIN)	// [mV / count]
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+
+typedef enum{
+    ID_ADIN0_24V = 0,
+    ID_ADIN1_13V,
+    ID_ADIN2_5V,
+    ID_ADIN3_3V3,
+    ID_ADIN4_CPV,
+    ID_ADIN5_VPV,
+    ID_ADIN6_TVPV,
+    ID_ADIN10_PIL,
+    ID_ADIN11_PIH,
+    ID_ADC_NUM_MAX
+}AdcIDType;
+
+typedef enum{
+    ID_ADC1_CH00 = 0,
+    ID_ADC1_CH01,
+    ID_ADC1_CH02,
+    ID_ADC1_CH03,                                                                     //jkpark 2026-01-15 STL에 겹치는 기능으로 내부 VREFINT 를 사용.
+    ID_ADC1_VREFINT = ID_ADC1_CH03,
+    ID_ADC2_CH04,
+    ID_ADC2_CH05,
+    ID_ADC2_CH06,
+    ID_ADC3_CH10,
+    ID_ADC3_CH11,
+    ID_ADC__NUM_MAX
+}AdcIndexType;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+//s32 ADC_GetStmAdc15bit(u32 rank, void);
+//s32 ADC_GetStmAdc15bit(u32 rank, void);
+void	ADC_UpdateStmAdc15bit( void );
+s32		ADC_GetStmAdc15bit( AdcIDType adcID );
+void 	ADC1_Ch10_GetPIL(void); 
+void 	ADC1_Ch11_GetPIH(void);
+void 	ADC1_Ch0_GetAd24V(void);
+void 	ADC1_Ch1_GetAd13V(void); 
+void 	ADC1_Ch2_GetAd5V0(void); 
+void 	ADC1_Ch3_GetAd3V3(void) ;
+void    ADC_InitAll( void );
+
+
+#endif //__MS_ADC_H__

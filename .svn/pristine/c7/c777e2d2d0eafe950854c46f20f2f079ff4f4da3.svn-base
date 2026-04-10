@@ -1,0 +1,90 @@
+/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               AFE_adbms6815.h
+\author             KKD
+\date               2025-11-24 
+\brief              Cell/Temp sensor - spi
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __AFE_ADBMS6815_H__
+#define __AFE_ADBMS6815_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+//#include <ms_main.h>
+#include "ms_config.h"
+#include "ms_can.h"
+#include "ms_spi.h"
+
+/* Exported define ---------------------------------------------------------------------------------*/
+//#define TOTAL_CELL_COUNT		(14)			
+//#define TOTAL_MON_IC_COUNT	(12)			
+//#define PACK_V_DIFF			(500)			
+//#define TEMP_AVE_USE_COUNT	(10)				// 14 - Up 2, Down 2			
+//#define AFE_TOP_START_INDEX	(7)					// Do not USE	
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+extern sAdbms6815 	g_sAd6815Data;
+extern sSM_Task 	g_sSm;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern u8 	g_u8CmdCount;
+extern u8 	g_u8AfePos[NSLV];
+extern u8 	g_u8TxData[MAXBUF];		
+extern u8 	g_u8RxData[MAXBUF];
+
+extern u8 	g_u8Tx[NAFE][NGRP][MAXBUF];
+extern u8 	g_u8Rx[NAFE][NGRP][MAXBUF];
+
+extern u16 	g_u16Adbms6815_Pec15Table[256];	
+extern u16 	g_u16Adbms6815_Crc15_Poly;		
+extern u16 	g_u16Adbms6815_Pec10Table[256];	
+extern u16 	g_u16Adbms6815_Crc10_Poly;		
+extern u16 	g_u16Adbms6815_VoltTable_10k[132]; 
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+u16		Adbms6815_CmdPec15(u8 *data, int len);
+u16		Adbms6815_DatPec10(u8 *data, int len, BOOL bIsRxCmd);
+void	Adbms6815_Init_Pec15_Table(void);
+void 	Adbms6815_Init_Pec10_Table(void);
+
+void 	Adbms6815_ChipSel(eAdSpi_Type eAfe, BOOL bComDir, BOOL bSelect);
+
+void 	Adbms6815_Wakeup(eAdSpi_Type eAfe, eAdComDir_Type eComDir);
+
+void 	Adbms6815_Cmd_Write(eAdSpi_Type eAfe,eAdComDir_Type eComDir, u16 u16Cmd);
+BOOL	Adbms6815_Daisy_ReadEnd(eAdSpi_Type eAfe,eAdComDir_Type eComDir);
+void 	Adbms6815_Daisy_Read_DmaStart(eAdSpi_Type eAfe,eAdComDir_Type eComDir, eRegGroup_Type eRegGroup, u16 u16Cmd);
+void 	Adbms6815_Daisy_Read_DmaEnd(eAdSpi_Type eAfe,eAdComDir_Type eComDir, eRegGroup_Type eRegGroup, sAdbms6815 *pAd, eAdRead_Type eRdType, eAdRead_FuSa_Type eRdFusaType);
+
+void 	Adbms6815_Daisy_SM_Poll_Read(eAdSpi_Type eAfe,eAdComDir_Type eComDir, eRegGroup_Type eRegGroup, u16 u16Cmd, sSM_Task *pSm);
+void	Adbms6815_Daisy_CfgWrite(eAdSpi_Type eAfe, eAdComDir_Type eComDir,u16 u16Cmd,u8 u8Cfgr[][NSLV][6]);
+
+void 	Adbms6815_WrCfgA(eAdSpi_Type eAfe,eAdComDir_Type eComDir, u8 EnPs, u8 FlagD, u8 Soak, u8 Owrn);
+void 	Adbms6815_WrCfgB(eAdSpi_Type eAfe,eAdComDir_Type eComDir);
+void 	Adbms6815_WrCfgBal(eAdSpi_Type eAfe,eAdComDir_Type eComDir, u16 u16ManualbalFlag[], BOOL bManualBal);
+void	Adbms8615_WrcfgBal_EvenOdd(eAdSpi_Type eAfe, eAdComDir_Type eComDir, u8 u8EvenOdd);
+void 	Adbms6815_Cal_AfePos(eAdComDir_Type eComDir, eAdRw_Type eWriteRead);
+u8 		Adbms6815_Get_AfePos(u8 u8AfePos);
+void 	HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi);
+void 	Adbms6815_ManualBalance(eAdComDir_Type eComDir);
+
+u16 	Adbms6815_CmdCnt(u16 *pu16ReadPec);
+void 	Adbms6815_Init(void);
+
+void 	Adbms6815_NorCell_Proc(void);
+void    Adbms6815_NorTh_Proc(void);
+void 	Adbms6815_Proc(void);
+
+
+#endif //__AFE_ADBMS6815_H__
+

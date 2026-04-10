@@ -1,0 +1,89 @@
+﻿/*=================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Hall sensor - CAN 500kbit/s)	        	                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+
+\file               HALL_cab1500.h
+\author             KKD
+\date               2025-11-21 
+\brief              Hall sensor - CAN 500kbit/s
+*/
+/************************ (C) COPYRIGHT 2025 MisumSystech ***************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+********************************************************************************/
+#ifndef __HALL_CAB1500_H__
+#define __HALL_CAB1500_H__
+
+/* Includes ------------------------------------------------------------------*/
+#include <ms_main.h>
+/* Exported define ------------------------------------------------------------*/
+#define CURR_SG1_TH_LOW_A        	(float)(220.0f)
+#define CURR_SG1_DIFF_LOW_A      	(float)(44.0f)       	// <220A
+#define CURR_SG1_DIFF_RATIO      	(float)(0.20f)       	// ±20%
+
+
+#define HALL_CAN_ID              	(0x3C2)
+#define HALL_TIMEOUT_MS          	(500)					// safety timing
+#define HALL_SEQ_STUCK_TH			(5)
+
+
+
+/* Exported macro -------------------------------------------------------------*/
+/* Exported typedef -----------------------------------------------------------*/
+
+typedef enum{
+	HErr_SeqStuck_Type	= 0,
+	HErr_SupPwr_Type,
+	HErr_InterErr_Type,
+	HErr_GoalViol_Type,
+	HErr_CanTimeout_Type,
+	HErr_Comp_Type,
+	HErr_CanRxTimeout_Type,
+	Max_HallErr_Type
+}eHall_Err_Type;
+
+typedef struct{
+	eHall_Err_Type eHallErr;                                                         	//KKD 2025-12-02 Error pos
+	u8	u8SeqCnt;									                                 	//KKD 2025-12-02  Sequence Counter (0~15)
+	u8	u8StsPwr;									                                 	//KKD 2025-12-02 PowerSupply Status (bit1~0)
+	u8	u8StsIntErr;								                                  	//KKD 2025-12-02 Internal Error Flag (bit2)
+	u8	u8StsSgv;							                                         	//KKD 2025-12-02 SafetyGoalViolation (bit3)
+	u8	u8SeqStuckErr;									                            	//KKD 2025-12-02 Sequence Counter Stuck Err
+    u8	bComTimout;                                                                		//KKD 2025-12-02 0.5s 미응답
+    
+	s32	s32Analog;										                           		//KKD 2025-12-02 Analog Current (A 단위 Scaled 0.001A 단위)
+	s32	s32Digital;																		//KKD 2025-12-02 Digital Current (SF 버전만, 0.001A 단위)
+
+	u8	u8SeqStuckCnt;
+	u8	u8Crc;                                                                        	//KKD 2025-12-02  CRC_IP Raw
+	u16	u16ErrStatus;																	//KKD 2025-12-02 Total fault
+}sHallData;
+
+extern sHallData g_sHallData;
+/* Exported variables ---------------------------------------------------------*/
+
+/* Exported function prototypes -----------------------------------------------*/
+void 	Hall_Init(void);
+
+void	Hall_CanRxParsing(u8 *pu8CanRxData, sHallData *psHallData);
+BOOL	Hall_DiagnosicCheck(sHallData *psHallData);
+BOOL	Hall_SM_CurrentSenseCheck(sHallData *psHallData);
+void	Hall_CanRx_TimeoutCheck(sHallData *psHallData);
+void	Hall_Proc(void);
+
+u16		Hall_GetErrStatus(void);
+float	Hall_GetAnalogAmp(void);
+float	Hall_GetDigitalAmp(void);
+u8		Hall_GetSeqCount(void);
+
+
+
+
+
+#endif

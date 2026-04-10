@@ -1,0 +1,43 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_soc.h
+\author             KKD
+\date               2025-11-21 
+\brief              SOC를 위한 헤더.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef MS_SOC_H
+#define MS_SOC_H
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_det.h"
+
+/* Exported define ---------------------------------------------------------------------------------*/
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+
+#define AVGSOC				(8U)
+
+void SOC_Init(void);
+void SOC_Init_StateOfCharge(u32 ratfulcap, u16 cvavg);
+
+void SOC_CycleCount(s32 pi1sec, u32 ratfullcap);
+void SOC_StateOfHealth(u16 cyccnt);
+void SOC_StateOfCharge(u32 ratfulcap, u16 cvavg, s32 pi1sec, u32 fdet);
+
+u32 SOC_CompensateCap(u32 ratfulcap, s16 th);
+u32 SOC_BoltzmannCap(u16 cvavg, u32 ratfulcap);
+
+#endif

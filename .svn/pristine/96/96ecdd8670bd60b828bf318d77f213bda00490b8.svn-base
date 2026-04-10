@@ -1,0 +1,477 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(adbms saftey mech)                                                  *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               AFE_adbms6815_SM.h
+\author             KKD
+\date               2025-11-24 
+\brief              adbms saftey mech
+*********************************************
+
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <AFE_adbms6815_SM.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private Typedef --------------------------------------------------------------------------------*/
+
+/* Private variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+
+// SM1 : MUX ���ڴ� ���� ���� (DIAGN ���? MUXFAIL �÷��� Ȯ��)
+int Adbms6815_SM1_MuxDecoderCheck(sSM_Task *pSm)
+{
+	pSm->eSMNum = SM1_Type;
+	Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,DIAGN);
+	Delay_ms(2);
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GC_TYPE,RDSTSC,pSm);
+	Delay_ms(2);
+	return 1;
+}
+
+// SM2 : ���� ���� ���� �˻� (ADAX�� VREF2 ����)
+int Adbms6815_SM2_InternalRefCheck(sSM_Task *pSm)
+{
+	u16	cmd		= (ADAX|ADBMS6815_MD_7khz|ADBMS6815_PG_UNIQUE);  
+	pSm->eSMNum = SM2_Type;
+	Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,cmd);
+	Delay_ms(2);
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GA_TYPE,RDAXA,pSm);
+	return 1;
+}
+
+
+// SM4 : CV openwire : WR: CVOW, RD: Cell Diang group
+int Adbms6815_SM4_CellOpenWire(sSM_Task *pSm)
+{
+	BOOL rtn = FALSE; 
+	u8	nslv,nscv;
+	u16	diff;
+	
+	pSm->eSMNum = SM4_Type;
+	for(nslv=0; nslv<NSLV; nslv++){
+		for(nscv=0; nscv<NSCV; nscv++){
+			if((g_sAd6815Data.u16Ow[g_sAd6815Data.eAfe][nslv][nscv] & 0xFFF0 ) == 0x7FA0){
+				pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]++;
+			}else if(g_sAd6815Data.u16Ow[g_sAd6815Data.eAfe][nslv][nscv] == 0x7FC0){
+				pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]++;
+			}else{
+				diff = LABS_U16(g_sAd6815Data.u16Cv[g_sAd6815Data.eAfe][nslv][nscv] - g_sAd6815Data.u16Ow[g_sAd6815Data.eAfe][nslv][nscv]);
+				if(diff > 30){	 
+					pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]++;
+				}
+			}
+		}
+	}
+	if(pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum] >=0xFFFF){
+		pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum] = 0xFFFF;
+	}
+	
+	if(pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]> MAX_DTC_COUNT){
+		//todo : err proc. . .
+		rtn = TRUE;
+	}
+
+	return rtn;
+}
+
+// SM7 : ���� ���� ���� ����͸�?(ADSTAT) VREG, VREGD
+BOOL Adbms6815_SM7_SupplyVoltageCheck(sSM_Task *pSm)
+{
+	u16	cmd = (ADSTAT|ADBMS6815_MD_7khz);
+	pSm->eSMNum = SM7_Type;
+	Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,cmd);			
+	Delay_ms(2);
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GA_TYPE,RDSTSA,pSm);	
+	Delay_ms(2);
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GB_TYPE,RDSTSB,pSm);
+	
+	return 1;
+}
+
+// SM8 : SPI ���?������ CRC/������ TX/RX�� �����ϰ�����
+// SM9 : �� ��ø ���� (ADOL, ADC1  cv7 vs ADC2 cv7)
+BOOL Adbms6815_SM9_CellOverlap(sSM_Task *pSm)
+{
+	u16	cmd	= (ADOL|ADBMS6815_MD_7khz);
+	pSm->eSMNum = SM9_Type;
+	Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,cmd);
+	Delay_ms(2);
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,0,RDSTSC,pSm);
+
+	return TRUE;
+}
+
+// SM10 : ���� �������� �����?(CLRAUX) (�ʿ����?
+// SM11 : ���� ä�� ���� �������� ���� (AXPG, ���� ���� �� ��) (���� �� ���� ����)
+// SM12 : ����ȭ�� �����?�� �µ� ���� (2���� GPIO�� ���� �ߺ� NTC)(�µ� ����ȭ ���� �ƴ�)
+// SM13 : �ߺ� ������ ���� (PS ��Ʈ �����Ͽ� 2ȸ ��ȯ �� ��) - adc1/2���� ���� Ȯ��.  SM38�� ��ü
+// SM15 : C��-S�� �ܶ� ���� (ADCV with DC=1 vs DC=0 ��)
+BOOL Adbms6815_SM15_CSPinShortCheck(sSM_Task *pSm){
+    BOOL rtn		= FALSE;
+	u8	nslv			= 0;
+	u8	nscv			= 0;
+
+	float fbase			= 0.00f;    // DCC OFF ���ذ�
+	float fmeas			= 0.00f;	// DCC ON (���� ��) ��
+	float fratio		= 0.00f;	// ���� ����
+	float fdiffLow 		= 0.75f;
+	float fdiffHigh 	= 1.25f;
+
+	pSm->eSMNum = SM15_Type;
+	for(nslv=0; nslv<NSLV; nslv++){
+		for(nscv=0; nscv<NSCV; nscv++){
+			fbase = g_sAd6815Data.u16Cv[g_sAd6815Data.eAfe][nslv][nscv];
+
+			if((nscv % 2) == 0){ 
+				fmeas = g_sAd6815Data.u16EvCv[g_sAd6815Data.eAfe][nslv][nscv]; 
+			}else{ 
+				fmeas = g_sAd6815Data.u16OdCv[g_sAd6815Data.eAfe][nslv][nscv]; 
+			}
+
+			fratio = (float)(fmeas / fbase);																// ���� ���?������/���ذ�)
+
+			if(fratio <fdiffLow){ 
+				pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]++; 																			// <0.75% �̸� | C(n)-S(n) �Ǵ� C(n-1)-S(n-1) ��Ʈ �ǽ�
+			}else if(fratio>fdiffHigh){ 
+				pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]++; 							// >1.25% �ʰ� | S(n+1)-C(n) �Ǵ� S(n)-C(n-1) ��Ʈ �ǽ�
+			}
+		}
+	}
+	if(pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum] >=0xFFFF){
+		pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum] = 0xFFFF;
+	}
+	
+	if(pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]> MAX_DTC_COUNT){
+		//todo : err proc. . .
+		rtn = TRUE;
+	}
+
+	return rtn;
+}
+
+// SM16 : �� �Է� ���� ���� ���� (ADLEAK, C�� vs S�� ���� ��) ����
+// SM17 : ���� ���� ���� ���� (ADSC, ���� ADCV ���� ���� ���� Ȯ��)
+BOOL Adbms6815_SM17_SenseLineFaultCheck(sSM_Task *pSm)
+{
+    BOOL rtn		= FALSE;
+	u8	nslv			= 0;
+	u8	nscv			= 0;
+	
+    float fRatio		= 0.0f;
+    float fsv   		= 0.0f; 
+    float fcv			= 0.0f;
+
+	pSm->eSMNum = SM17_Type;
+	for(nslv=0; nslv<NSLV; nslv++){
+		for(nscv=0; nscv<NSCV; nscv++){
+			fsv = (float)g_sAd6815Data.u16Sv[g_sAd6815Data.eAfe][nslv][nscv];
+			fcv = (float)g_sAd6815Data.u16Cv[g_sAd6815Data.eAfe][nslv][nscv];
+		
+			if(fcv > 10.0f){																				// �븻 ������ 0�� �ƴϸ�
+				fRatio = fsv / fcv;
+				if((fRatio < 0.1f) || (fRatio > 0.9f)){
+					pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]++;													// Ratio �ʰ� ����
+				}
+			}
+		}
+	}
+	if(pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum] >=0xFFFF){
+		pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum] = 0xFFFF;
+	}
+	
+	if(pSm->u16DtcCount[g_sAd6815Data.eAfe][nslv][pSm->eSMNum]> MAX_DTC_COUNT){
+		//todo : err proc. . .
+		rtn = TRUE;
+	}
+
+	return rtn;
+}
+#if 0
+ // SM19 : Internal Supply Fault Monitoring         - VREG / VREGD ���� (SM7 Ȯ��)
+BOOL Adbms6815_SM19_InternalSupplyFault(sSM_Task *pSm)
+{
+    BOOL rtn = FALSE;
+    u8	nslv		= 0;
+    u8	nreg		= 0;
+    u16	pec_rx	= 0;
+    u16	pec_mk	= 0;
+    u16	u16vaov_hi	= 0,
+    u16	u16vauv_lo	= 0;
+    u16	u16vdov_hi	= 0;
+	u16	u16vdov_lo	= 0;
+
+    switch(pSm->estate){
+        case SM_STATE_INIT: 
+        	rtn = FALSE; 
+        	break;
+        	
+        case SM_STATE_START:
+            break;
+            
+        case SM_STATE_READ_STA_1:																			// read single group
+            Adbms6815_Daisy_Read_DmaStart(g_sAd6815Data.eComDir,GROUPA, RDSTSC);							// status register c
+            break;
+            
+        case SM_STATE_READ_END_1:
+            Adbms6815_Daisy_ReadEnd(g_sAd6815Data.eComDir);	
+            // read done
+            for(nslv=0;nslv<NSLV;nslv++){												// 
+                pec_rx = ((u16)(g_u8Rx[GROUPA][10+(nslv*8)])<<8)+g_u8Rx[GROUPA][11+(nslv*8)];
+                pec_mk = Adbms6815_DatPec10(&g_u8Rx[GROUPA][4+(nslv*8)],6,TRUE);
+                if(pec_rx==pec_mk){
+                    for(nreg=0;nreg<6;nreg++){
+                    	reg[nslv][nreg]=g_u8Rx[GROUPA][4+(nslv*8)+nreg];
+                   	}
+                }
+            }break;
+            
+        case SM_STATE_ANALYZE:
+            for(nslv=0;nslv<NSLV;nslv++){
+				u16vaov_hi = (reg[nslv][0] &0x80);						// bit 7 vreg analog ov flag chk
+				u16vauv_lo = (reg[nslv][0] &0x40);						// bit 6 vreg analog uv flag chk						
+				u16vdov_hi = (reg[nslv][0] &0x20);						// bit 5 vreg digital ov flag chk
+				u16vdov_lo = (reg[nslv][0] &0x10);						// bit 4 vreg digital uv flag chk
+
+                if((u16vaov_hi|u16vauv_lo|u16vdov_hi|u16vdov_lo) != 0){
+                    pSm->u16DtcCount[nslv][pSm->id]++;
+                }
+            }
+            if(pSm->u16DtcCount[nslv][pSm->id] > MAX_DTC_COUNT){
+				rtn = TRUE;
+			}break;
+    }
+    if(pSm->estate == SM_STATE_ANALYZE){
+    	return rtn;
+    }
+}
+#endif
+
+ // SM22 : Redundant ADC Controller
+ //SM23 : Clock Monitor Check         
+ //- ���� ADC ��Ʈ�ѷ��� ��	
+// - SM22_23 ���� üũ
+BOOL Adbms6815_SM22_RedundantAdcController(sSM_Task *pSm){
+	pSm->eSMNum = SM22_Type;
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GC_TYPE,RDSTSC,pSm);
+	return TRUE;
+}
+
+// SM23 : Ŭ�� �����?(ADC Ŭ�� vs ���� 8kHz �����?
+BOOL Adbms6815_SM23_ClockMonitor(sSM_Task *pSm){
+	pSm->eSMNum = SM23_Type;
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GC_TYPE,RDSTSC,pSm);
+	return TRUE;
+}
+
+// SM24 : CV ������ üũ -> BMS ���� OVP UVP�� �����ϴϱ� ���ص���.
+// SM26 : PEC ���� (�߸��� PEC�� ���Ƿ� ������ �źεǴ��� Ȯ��) �ۼ����Ҷ� üũ�ϰ����� ���ص���.
+// SM28 : GPIO ���� �� �� �ܶ� ����(����)
+// SM29 : ���� ä�� �ܼ� ���� (AXOW + PUP ��Ʈ) User Source�� �˰��� ���? Open//Short �Ѵ� üũ��  �ϹǷ� ����
+// SM30 : MUX ����ġ ���̾ ���� ���� ���� ���� ����
+// SM31 : ���� ADC ä�� ���ܿ� 5V ���� (ADC2 ���� ����)
+BOOL Adbms6815_SM31_Adc2_5VRefCheck(sSM_Task *pSm){
+    // ADAX ��ȯ �� REF3  5V Check
+	u16 cmd = (ADAX|ADBMS6815_GPIO_CH_VREF); 
+ 	pSm->eSMNum = SM31_Type;
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, cmd);
+    Delay_ms(2);
+    Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, GC_TYPE,RDAXC,pSm);
+
+    return TRUE;
+
+}
+
+// SM33 : ���� �������� �����?(CLRSTAT) - �������� ��ü Ŭ���� Ȯ��?
+// SM34 : ���� ���� ���� ���� (STATC �÷��� Ȯ��)
+BOOL Adbms6815_SM34_ChargePumpCheck(sSM_Task *pSm){
+    u8 cfgr[MAX_AFE_Type][NSLV][6] = {0,};
+    int i = 0, j = 0;
+
+    for( i = 0 ; i < MAX_AFE_Type ; i++ ){
+        for( j = 0 ; j < NSLV ; j++ ){
+        	cfgr[i][j][0] = (REFON|ADCOPT);  
+        	cfgr[i][j][1] = (MN_CP_UVCHK_FAIL);																			// Flag D - Charge Pump Manual Test								// Test Mode : Charge Pump Fault = 1
+        	cfgr[i][j][2] = 0x00;
+        	cfgr[i][j][3] = 0xFF;
+        	cfgr[i][j][4] = 0xFF;
+        }
+    }
+
+ 	pSm->eSMNum = SM34_Type;
+	Adbms6815_Daisy_CfgWrite(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,WRCFGA, cfgr);											// Charge Pump ���� fault �߻�
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, GC_TYPE ,RDSTSC,pSm);								// Register Group C ���� CP �÷��� 1���� Ȯ��
+
+    for( i = 0 ; i < MAX_AFE_Type ; i++ ){
+        for( j = 0 ; j < NSLV ; j++ ){
+	        cfgr[i][j][1] = 0x00;																							// Test Mode �ʱ�ȭ
+        }
+    }
+	Adbms6815_Daisy_CfgWrite(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,WRCFGA, cfgr);
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,CLRFFLAG);													// Register Group C �ʱ�ȭ
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GC_TYPE ,CLRFFLAG,pSm);								// Register Group C CP�� �÷��� 0���� Ȯ��.
+
+    return TRUE;
+}
+
+// SM38 : Die �µ� ���� �µ� �������� Open ���� ������ ����
+// SM41 : �ߺ� ������ ���� ���� �׽�Ʈ
+BOOL Adbms6815_SM41_FilterDiagTest(sSM_Task *pSm){
+	//static u8 tog = 0;
+/*	
+	u8 cfgr[6] = {0,0,0,0,0,0};
+	
+	cfgr[0] = (PSH|REFON|ADCOPT);  
+	cfgr[2] = 0x00;
+	cfgr[3] = 0xFF;
+	cfgr[4] = 0xFF;
+*/
+    // ����: CLRCELL �� WRCFGA �� ADCV (PS=01) �� �� �б� �� ADCV (PS=10) �� �� �б�
+ 	pSm->eSMNum = SM41_Type;
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, GC_TYPE ,RDSTSC,pSm);								// Register Group C ���� CP �÷��� 1���� Ȯ��																					// Test Mode �ʱ�ȭ
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,CLRFFLAG);													// Register Group C �ʱ�ȭ
+	Delay_ms(1);
+	Adbms6815_Daisy_SM_Poll_Read(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,GC_TYPE ,CLRFFLAG,pSm);								// Register Group C CP�� �÷��� 0���� Ȯ��.
+    return 1;
+
+}
+
+// SM42 : ���� ���� ���� �����?���� �׽�Ʈ
+BOOL Adbms6815_SM42_SupplyDiagTest(void){
+    u16 pec_rx	= 0;
+    u16 pec_mk	= 0;
+
+    // ����: fault flag clear �� ADC ��ȯ �� RDSTATC
+    //Adbms6815_SM33_ClearStatusReg(eComDir);
+    //Adbms6815_StartCvAux(g_sAd6815Data.eComDir,ADCV);
+    Delay_ms(3);
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,ADCV);
+
+    pec_rx=((u16)g_u8RxData[10]<<8)|g_u8RxData[11];
+    pec_mk=Adbms6815_DatPec10(&g_u8RxData[4],6,TRUE);
+    if(pec_rx!=pec_mk){
+    	return FALSE;
+    }
+
+    // UV/OV fault ���� ���� Ȯ��
+    if(g_u8RxData[4] & 0x0C){
+    	return FALSE;
+    }
+    return TRUE;
+}
+
+// SM43 : MUX ���ڴ� ���� ���� ȸ�� ���� �׽�Ʈ
+BOOL Adbms6815_SM43_MuxDiagTest(void){
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,DIAGN);
+
+    //Adbms6815_SM33_ClearStatusReg(g_sAd6815Data.eComDir);
+    Adbms6815_ChipSel(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,TRUE);
+    HAL_SPI_TransmitReceive(&hspi1,g_u8TxData,g_u8RxData,sizeof(g_u8RxData),5);
+    Adbms6815_ChipSel(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,FALSE);
+    Delay_ms(2);
+
+    //Adbms6815_Write(g_sAd6815Data.eComDir,);
+    if(g_u8RxData[4] & 0x01){
+    	return FALSE; // MUXFAIL
+    }
+    return TRUE;
+}
+
+// SM44 : ���� ���� ���?���� �����?���� �׽�Ʈ
+BOOL Adbms6815_SM44_CpOutDiagTest(void){
+    //Adbms6815_SM33_ClearStatusReg(eComDir);																	// clear befo fault status
+    //Adbms6815_StartCvAux(g_sAd6815Data.eComDir,ADCV);														// conv start cell v
+    Delay_ms(3);
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,RDSTSC);
+
+    if(g_u8RxData[4] & 0x08){
+    	return FALSE; // CPCHK Fail
+    }
+    return TRUE;
+}
+
+// SM45 : Clock �����?���� �׽�Ʈ // don't know..??
+BOOL Adbms6815_SM45_ClockDiagTest(sSM_Task *pSm)
+{	
+	Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir,CLRFFLAG);
+	Adbms6815_WrCfgA(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, 0,0,0,0);
+	
+    //Adbms6815_SM33_ClearStatusReg(eComDir);
+   	//Adbms6815_StartCvAux(g_sAd6815Data.eComDir,ADCV);
+    Delay_ms(3);
+   // Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir);
+
+    if(g_u8RxData[5] & 0x20){																				// reg status group C buff[1] : OSCCHK
+    	return FALSE; 																						// CLKFAIL
+    }
+    return TRUE;
+}
+
+
+
+// SM46 : Cell ���� �������� ���� (CDPG, ���� ���� �� ��)
+BOOL Adbms6815_SM46_CellDiagPattern(void){
+    int i = 0, j = 0;
+
+	u16 cmd	= (CDPG|ADBMS6815_MD_7khz|ADBMS6815_PG_UNIQUE);
+    
+    Adbms6815_Cmd_Write(g_sAd6815Data.eAfe, g_sAd6815Data.eComDir,cmd);
+
+    Adbms6815_ChipSel(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, TRUE);
+    Adbms6815_ChipSel(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, FALSE);
+
+    Delay_ms(2);
+
+    // read pattern (Cell Voltage Register Group A)
+    //Adbms6815_RdCv(g_sAd6815Data.eComDir, Group_A_Type);
+    //Adbms6815_CastCv(g_sAd6815Data.eComDir, Group_A_Type);
+
+    // compare pattern (neet pattern value)
+
+    for( i = 0 ; i < NAFE ; i++ ){
+        for( j = 0 ; j < NSLV ; j++ ){
+            if(g_sAd6815Data.u16Cv[i][j][0] != (u16)0x1234){
+            	return FALSE;
+            }
+        }
+    }
+    
+    return TRUE;
+}
+
+// SM50 : ���� �������� ���� (STATPG, ���� ���� �� ��)
+BOOL Adbms6815_SM50_StatusRegPattern(void){
+//	u16 cmd		= (STATPG|ADBMS6815_MD_7khz|ADBMS6815_PG_UNIQUE);
+	u16 pec_rx	= 0;
+	u16 pec_mk	= 0;
+
+	Adbms6815_Cmd_Write(g_sAd6815Data.eAfe,g_sAd6815Data.eComDir, STATPG);
+    Delay_ms(2);
+	Adbms6815_Daisy_Read_DmaStart(g_sAd6815Data.eAfe, g_sAd6815Data.eComDir, GC_TYPE, RDSTSC);   								// ���� �������� �׷� C �б�
+
+
+    pec_rx = ((u16)g_u8RxData[10] << 8) | g_u8RxData[11];
+    pec_mk = Adbms6815_DatPec10(&g_u8RxData[4], 6, TRUE);
+    if(pec_rx != pec_mk){
+    	return FALSE;
+    }
+
+    // Compare pattern - need pattern value!
+    if(g_u8RxData[4] != 0x55){
+    	return FALSE;
+	}
+    return TRUE;
+}
+
+
+

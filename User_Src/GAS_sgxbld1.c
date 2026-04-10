@@ -1,0 +1,221 @@
+﻿/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(GAS sensor - CAN)	        	                                   *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               GAS_sgxbld1.c
+\author             KKD
+\date               2025-11-21 
+\brief              배터리 밴트 Open시 발생하는 가스 측정
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "GAS_sgxbld1.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+sGasData g_sGasData;
+static u32 g_u32GasLastTime;
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+void GAS_Init(void)
+{
+    GPIO_DOut_GAS(TRUE);
+    memset(&g_sGasData, 0, sizeof(g_sGasData));
+    g_sGasData.u16ErrStatus	= FALSE;
+    g_sGasData.bComTimout	= TRUE;         // 초기에는 미수신 상태
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+    TimerAdd( 500, GAS_TimeoutCheck , &g_sGasData.s32TimerID );
+#endif //CAN_BUF_UPATE
+    
+}
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+msStatus_t GAS_RxParsing  ( uint32_t canID, u8 *pu8CanRxData )
+{
+    msStatus_t retValue = MS_ERROR;
+    switch( canID )
+    {
+        case GAS_CAN_ID:
+                GAS_CanRxParsing  ( &g_sGasData, pu8CanRxData );
+                retValue = MS_SUCCESS;
+            break;
+        default:
+            break;
+    }
+    return retValue;
+}
+#endif //CAN_BUF_UPATE
+
+void GAS_CanRxParsing(sGasData *psGasData ,u8 *pu8CanRxData)
+{
+	u8 prevseq = psGasData->u8RollCnt;   
+
+    psGasData->u8Temp 		= pu8CanRxData[0];                                                //KKD 2025-12-02 BYTE 0 : Tempperature_u8
+    psGasData->fTempC 		= (float)((float)psGasData->u8Temp * GAS_FACTOR_TEMP) + GAS_OFFSET_TEMP;
+
+    psGasData->u16H2 		= (((u16)pu8CanRxData[1] << 8) | pu8CanRxData[2]);                 //KKD 2025-12-02 BYTE 1~2 : Hydrogen_u16 (Motorola: big-endian)
+    psGasData->fH2Percent 	= (float)psGasData->u16H2 * GAS_FACTOR_H2;
+
+    psGasData->bOvp 		= ((pu8CanRxData[3] & (u8)(1U<<0)) != 0U) ? TRUE : FALSE;
+    psGasData->bTCIssue 	= ((pu8CanRxData[3] & (u8)(1U<<1)) != 0U) ? TRUE : FALSE;
+    psGasData->bRHIssue 	= ((pu8CanRxData[3] & (u8)(1U<<2)) != 0U) ? TRUE : FALSE;
+    psGasData->bH2OutRange 	= ((pu8CanRxData[3] & (u8)(1U<<3)) != 0U) ? TRUE : FALSE;
+    psGasData->bTempIssue 	= ((pu8CanRxData[3] & (u8)(1U<<4)) != 0U) ? TRUE : FALSE;
+    psGasData->bUvp 		= ((pu8CanRxData[3] & (u8)(1U<<5)) != 0U) ? TRUE : FALSE;
+    psGasData->bSensorRepl 	= ((pu8CanRxData[3] & (u8)(1U<<6)) != 0U) ? TRUE : FALSE;
+
+    psGasData->u8Voltage 	= pu8CanRxData[4];                                             //KKD 2025-12-02 BYTE 4 : Voltage_u8
+    psGasData->fVoltageV 	= (float)((float)psGasData->u8Voltage * GAS_FACTOR_VOLTAGE);
+
+    psGasData->u8Humidity 	= pu8CanRxData[5];                                            //KKD 2025-12-02 BYTE 5 : Humidity_u8
+    psGasData->fHumiPerc 	= (float)((float)psGasData->u8Humidity * GAS_FACTOR_HUMIDITY);
+
+   
+    psGasData->u8RollCnt = (pu8CanRxData[6] & 0x0FU);                                    //KKD 2025-12-02 BYTE 6 : Roll Counter (0~15)
+
+	if(psGasData->u8RollCnt == prevseq){
+		if(psGasData->u8RollStuckCnt < 0xFFU){
+			psGasData->u8RollStuckCnt++;												//KKD 2025-12-01 같은 값이 반복됨
+		}
+	}else{
+		psGasData->u8RollStuckCnt = 0;													//KKD 2025-12-01 정상적으로 바뀌면 리셋
+	}
+
+    psGasData->bComTimout = FALSE;
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+    TimerRestart( psGasData->s32TimerID );
+#else //CAN_BUF_UPATE
+    g_u32GasLastTime = HAL_GetTick();
+#endif //CAN_BUF_UPATE
+    
+}
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+msStatus_t GAS_TimeoutCheck( void )
+{
+    g_sGasData.bComTimout = TRUE;
+    return MS_ENABLE;;
+}
+#else  //CAN_BUF_UPATE
+void GAS_TimeoutCheck(sGasData *psGasData)
+{
+    u32 now = HAL_GetTick();
+
+    if ((now - g_u32GasLastTime) >= (u32)GAS_TIMEOUT_MS)
+    {
+        //if (g_sGasData.bComTimout == TRUE){                                         	//KKD 2025-12-01 Rx 최근 수신 체크(CAN_Rx_Done가 False 유지시 타입아웃 발생
+        //    g_sGasData.u16ErrStatus = TRUE;                                          	//KKD 2025-12-01 500ms 이상 미 수신시 Fault 발생
+        //}
+        psGasData->bComTimout = TRUE;                                               	//KKD 2025-12-01 Rx 체크 플래그 초기화
+        g_u32GasLastTime = now;
+    }
+}
+#endif //CAN_BUF_UPATE
+
+
+BOOL GAS_DiagnosicCheck(sGasData *psGasData)                                            //KKD 2025-12-02 GAS Sensor IC Diagnosic
+{
+    if(psGasData->u8RollStuckCnt >= (u8)GAS_SEQ_STUCK_TH){
+        psGasData->u8RollStuckCnt = TRUE;                     							//KKD 2025-12-01 5회 이상 정지 에러
+    }else{
+        psGasData->u8RollStuckCnt = FALSE;
+    }
+
+
+	if(psGasData->bOvp == TRUE)			{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_Ovp_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_Ovp_Type);}
+
+	if(psGasData->bTCIssue == TRUE)		{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_RHIssue_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_RHIssue_Type);}
+
+	if(psGasData->bRHIssue == TRUE)		{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_TCIssue_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_TCIssue_Type);}
+
+	if(psGasData->bH2OutRange == TRUE)	{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_H2OutRange_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_H2OutRange_Type);}
+
+	if(psGasData->bTempIssue == TRUE)	{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_TempIssue_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_TempIssue_Type);}
+
+	if(psGasData->bUvp == TRUE)			{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_Uvp_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_Uvp_Type);}
+
+	if(psGasData->bSensorRepl == TRUE)	{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_SensorReplace_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_SensorReplace_Type);}
+
+	if(psGasData->bComTimout == TRUE)	{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_CanRxTimeout_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_CanRxTimeout_Type);}
+
+	if(psGasData->bOvp == TRUE)			{ psGasData->u16ErrStatus |= ((u16)1<<(u16)GErr_CanRxTimeout_Type);}
+	else								{ psGasData->u16ErrStatus &= ~((u16)1<<(u16)GErr_CanRxTimeout_Type);}
+
+	if((psGasData->u16ErrStatus & 
+	( ((u16)1 << (u16)GErr_Ovp_Type)		                                                     	//KKD 2025-12-08 비트플래그 셋
+      	| ((u16)1 << (u16)GErr_RHIssue_Type)  	
+	| ((u16)1 << (u16)GErr_TCIssue_Type)		
+      	| ((u16)1 << (u16)GErr_H2OutRange_Type)  	
+      	| ((u16)1 << (u16)GErr_Uvp_Type) 		
+      	| ((u16)1 << (u16)GErr_SensorReplace_Type)	
+      	| ((u16)1 << (u16)GErr_CanRxTimeout_Type)	
+      	| ((u16)1 << (u16)GErr_RollCountTimeout_Type) 
+	)) != 0U){
+        return TRUE;    
+	}return FALSE;
+}
+
+BOOL GAS_Proc(void)
+{
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+	GAS_DiagnosicCheck( &g_sGasData );
+#else  //CAN_BUF_UPATE
+	if(g_bSenIcRxDone[SenIC_GAS_Type] == TRUE){                                         	//KKD 2025-12-01 CAN Rx 확인. (TRUE : 정상 수신)
+		g_bSenIcRxDone[SenIC_GAS_Type] = FALSE;                                         	//KKD 2025-12-01 수신 플래그 초기화
+		GAS_CanRxParsing(&g_sGasData,(u8*)&g_u8SenIcRxData[SenIC_GAS_Type]);                     //KKD 2025-12-01 수신 데이터 처리
+	}
+    GAS_TimeoutCheck(&g_sGasData);
+	GAS_DiagnosicCheck(&g_sGasData);
+#endif //CAN_BUF_UPATE
+	return 1;
+}
+
+
+u16 GAS_GetErrStatus(void)
+{
+	return g_sGasData.u16ErrStatus;
+}
+
+u8 GAS_GetTemperature(void)
+{
+	return g_sGasData.u8Temp;
+}
+
+u16 GAS_GetHydrogenPercent(void)
+{
+	return g_sGasData.u16H2;
+}
+
+u8 GAS_GetVoltage(void)
+{
+	return g_sGasData.u8Voltage;
+}
+
+u8 GAS_GetHumidity(void)
+{
+	return g_sGasData.u8Humidity;
+}
+
+u8 GAS_GetRollCounter(void)
+{
+	return g_sGasData.u8RollCnt;
+}
+
+

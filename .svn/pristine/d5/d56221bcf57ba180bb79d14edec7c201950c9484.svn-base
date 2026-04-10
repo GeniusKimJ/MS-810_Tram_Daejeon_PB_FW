@@ -1,0 +1,105 @@
+﻿/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Humidit sensor - I2C)	        	                                   *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               HUMI_sht3xdis.c
+\author             KKD
+\date               2025-11-21 
+\brief              Humidit sensor - I2C
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <HUMI_sht3xdis.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+//static I2C_HandleTypeDef *hi2c1 = NULL;
+
+static I2C_HandleTypeDef *g_shi2c2 = NULL;
+static u8 g_u8Sht3xAddr = SHT3X_ADDR_A;
+sHumiData g_sSht3x;
+
+
+u8 Humi_CalcCrc(u8 *pData, u8 len)
+{
+    u8 crc = 0xFF;                                                                      //KKD 2025-11-28 Init = 0xFF
+    for (u8 i = 0; i < len; i++) {
+        crc ^= pData[i];
+        for (u8 b = 0; b < 8; b++) {
+            if (crc & 0x80) crc = (crc << 1) ^ 0x31;                                    //KKD 2025-11-28 Poly = 0x31
+            else            crc <<= 1;
+        }
+    }
+    return crc;
+}
+
+u8 Humi_Init(I2C_HandleTypeDef *hi2c, u8 addr)                                         	//KKD 2025-12-02 초기화
+{
+    g_shi2c2 = hi2c;
+    g_u8Sht3xAddr = addr;
+    HAL_Delay(10);
+    return TRUE;
+}
+
+u8 Humi_Read(sHumiData *psHumi)                                                        	//KKD 2025-12-02 Read
+{
+    u8 cmd[2];
+    u8 rx[6];
+    u16 rawT, rawRh;
+
+    if (g_shi2c2 == NULL){
+    	return FALSE;
+    }
+
+    cmd[0] = SHT3X_CMD_HIGHRPT_NOSTRETCH_MSB;   // 0x24
+    cmd[1] = SHT3X_CMD_HIGHRPT_NOSTRETCH_LSB;   // 0x00  (datasheet Table 9)
+    if (HAL_I2C_Master_Transmit(g_shi2c2, g_u8Sht3xAddr, cmd, 2, 50) != HAL_OK) { 
+    	return FALSE; 
+    } HAL_Delay(15);                                                                   	//KKD 2025-11-28 High repeat mode: 최대 15ms 필요 (datasheet tMEAS,h = 12.5~15ms)
+
+    if (HAL_I2C_Master_Receive(g_shi2c2, g_u8Sht3xAddr, rx, 6, 50) != HAL_OK) {			//KKD 2025-11-28 Recevie Data
+    	return FALSE; 
+    }
+        
+    if (Humi_CalcCrc(&rx[0], 2) != rx[2]) { return FALSE; }                            	//KKD 2025-11-28 CRC Check
+    if (Humi_CalcCrc(&rx[3], 2) != rx[5]) { return FALSE; }                            	//KKD 2025-11-28 CRC Check
+
+    rawT  = ((u16)rx[0] << 8) | rx[1];                                                  //KKD 2025-11-28 parser Raw
+    rawRh = ((u16)rx[3] << 8) | rx[4];
+
+    psHumi->fTempC	= -45.0f + (175.0f * (float)rawT / 65535.0f);                       //KKD 2025-11-28 온도 계산
+    psHumi->fRh		= 100.0f * (float)rawRh / 65535.0f;                                 //KKD 2025-11-28 습도 계산
+
+    psHumi->u8CrcOk	= TRUE;
+    psHumi->u8Valid	= TRUE;
+    return TRUE;
+}
+
+BOOL Humi_DiagnosicCheck(sHallData *psHallData) 
+{
+
+}
+
+
+
+void Humi_Proc(void)
+{
+	Humi_Init(&hi2c1, SHT3X_ADDR_A);
+	Humi_Read(&g_sHallData);
+}
+
+
+
+

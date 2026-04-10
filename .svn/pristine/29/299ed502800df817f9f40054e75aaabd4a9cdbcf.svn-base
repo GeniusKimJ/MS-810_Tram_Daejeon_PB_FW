@@ -1,0 +1,206 @@
+﻿/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(CAN monitoring)	        	                                       *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2026-01-12                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_can_mon.h
+\author             KKD
+\date               2026-01-12 
+\brief              CAN monitoring
+*********************************************
+* History:
+* 2026-01-12     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_can_mon.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+void Can_Tx_01_TimeDate(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan)
+{
+	u8 txdat[8]	= {0};
+	u32 idx     = (u32)(0x10);
+
+	memcpy(txdat,(RackPkt.rtc),sizeof(RackPkt.rtc));
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+
+void Can_Tx_02_Summery(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan)
+{
+	u8 txdat[8]	= {0};
+	u16 tmp		= 0;
+	u32 idx     = (u32)(0x11);
+
+	tmp  = RackPkt.soc;
+	txdat[0] = (u8)(tmp & 0xff);
+	txdat[1] = (u8)((tmp >> 8) & 0xff);
+
+	tmp  = RackPkt.soh;
+	txdat[2] = (u8)(tmp & 0xff);
+	txdat[3] = (u8)((tmp >> 8) & 0xff);
+
+	if(RackPkt.fdet != 0) { txdat[4] = (u8)(1<<0); }
+	if(RackPkt.falm != 0) { txdat[4] |= (u8)(1<<1); }
+	
+	txdat[6] = (u8)g_sRelayStatus.u8HvRly_Status;
+	txdat[7] = (u8)g_sRelayStatus.u8HvRly_Feedback;
+	
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+void Can_Tx_03_Summery_PV(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan)
+{
+	u8 txdat[8]	= {0};
+	u32 idx     = (u32)(0x12);
+	//Todo...
+
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+
+void Can_Tx_04_Summery_CV(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan)
+{
+	u8 txdat[8]	= {0};
+	u16 tmp		= 0;
+	u32 idx     = (u32)(0x13);
+
+	tmp	= RackPkt.TrayPkt[0].maxcv;
+	txdat[0] = (u8)(tmp & 0xff);
+	txdat[1] = (u8)((tmp >> 8) & 0xff);
+	
+	tmp	= RackPkt.TrayPkt[0].mincv;
+	txdat[2] = (u8)(tmp & 0xff);
+	txdat[3] = (u8)((tmp >> 8) & 0xff);
+
+	tmp	= RackPkt.TrayPkt[0].avgcv;
+	txdat[4] = (u8)(tmp & 0xff);
+	txdat[5] = (u8)((tmp >> 8) & 0xff);
+	
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+void Can_Tx_05_Summery_TH(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan)
+{
+	u8 txdat[8]	= {0};
+	s16 tmp		= 0;
+	u32 idx     = (u32)(0x14);
+
+	tmp	= RackPkt.TrayPkt[0].maxth;
+	txdat[0] = (u8)(tmp & 0xff);
+	txdat[1] = (u8)((tmp >> 8) & 0xff);
+	
+	tmp	= RackPkt.TrayPkt[0].minth;
+	txdat[2] = (u8)(tmp & 0xff);
+	txdat[3] = (u8)((tmp >> 8) & 0xff);
+
+	tmp	= RackPkt.TrayPkt[0].avgth;
+	txdat[4] = (u8)(tmp & 0xff);
+	txdat[5] = (u8)((tmp >> 8) & 0xff);
+	
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+
+void Can_Tx_06_AlarmDet(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan)
+{
+	u8 txdat[8]   = {0};
+	u32 idx 	  = (u32)(0x15);
+	
+	memcpy(&txdat[0],(&RackPkt.falm),sizeof(RackPkt.falm));
+	memcpy(&txdat[4],(&RackPkt.fdet),sizeof(RackPkt.fdet));
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+
+void Can_Tx_07_AdCvComFail(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8SlvPos)
+{
+	u8 txdat[8]   = {0};
+	u32 idx 	  = (u32)(0x16);
+
+	txdat[0] = 0+u8SlvPos;
+
+	if(u8SlvPos < 3){
+		memcpy(&txdat[1],&g_sAd6815Data.u8ReadFailCheck[0][(u8SlvPos*7)], ( sizeof(txdat) - 1 ) );
+	}else{
+		memcpy(&txdat[1],&g_sAd6815Data.u8ReadFailCheck[0][(u8SlvPos*7)],4);
+	}
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+
+/*
+void Can_Tx_08_AdThComFail(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8SlvPos)
+{
+	u8 txdat[8]   = {0};
+	u32 idx 	  = (u32)(0x17);
+
+	txdat[0] = 0+u8SlvPos;
+
+	if(u8SlvPos < 3){
+		memcpy(&txdat[1],&g_sAd6815Data.u8ReadFailCheck[0][(u8SlvPos*7)],sizeof(txdat));
+	}else{
+		memcpy(&txdat[1],&g_sAd6815Data.u8ReadFailCheck[0][(u8SlvPos*7)],4);
+	}
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);
+}
+*/
+
+
+/*Cell 288s*/
+void Can_Tx_Cv(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos)
+{
+	u16 txdat[4] 	= {0};
+	u32 idx 		= (u32)(0x1000+u8Pos); //0x1000~0x1113     288s                                              										//KKD 2025-11-26 송신 ID 설정
+
+	memcpy(&txdat[0],(u16*)&RackPkt.TrayPkt[0].cell[0+(u8Pos*4)], 8);
+	Can_TxFifo(eCanType, idx, (u8*)&txdat, eMcuCan);																											//KKD 2025-11-26 Fifo 에 적재
+}
+
+void Can_Tx_Th(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos)
+{
+	s16 txdat[4] 	= {0};
+	u32 idx 		= (u32)(0x2000+u8Pos); //0x1000~0x1113																								//KKD 2025-11-26 송신 ID 설정
+
+	memcpy(&txdat[0],(s16*)&RackPkt.TrayPkt[0].temp[0+(u8Pos*4)], 8);
+	Can_TxFifo(eCanType, idx, (u8*)&txdat, eMcuCan);																											//KKD 2025-11-26 Fifo 에 적재
+}
+
+
+void Can_Proc(void)
+{
+#ifdef CAN_BUF_UPATE    //2025-12-02   jkpark  Can Buffer 관련 수정.
+    u32    readId = 0;
+    
+    while( Can_RxParser( &readId ) == MS_SUCCESS );
+
+    //jkpark 2025-12-05 Rx로 명령을 받지 않아도 주기적으로 실행될 필요가 있는 경우 처리.
+    HALL_Proc(void)();
+    GAS_Proc();
+    IMD_Proc();
+    
+#else  //CAN_BUF_UPATE
+	u8 cnt = 0;
+	Can_Tx_01_TimeDate(Can_Extended_Type,McuCan_Ext_Type);																								// KKD 2025-11-26	timddate  
+	Can_Tx_02_Summery(Can_Extended_Type,McuCan_Ext_Type);																								// KKD 2026-01-12	soc/soh/alm/det
+	Can_Tx_03_Summery_PV(Can_Extended_Type,McuCan_Ext_Type);																							// KKD 2026-01-12	pv in/out/batt _ adding (Todo. . .)
+	Can_Tx_04_Summery_CV(Can_Extended_Type,McuCan_Ext_Type);																							// KKD 2026-01-12	cv avg/max/min
+	Can_Tx_05_Summery_TH(Can_Extended_Type,McuCan_Ext_Type);																							// KKD 2026-01-12	th avg/max/min
+	Can_Tx_06_AlarmDet(Can_Extended_Type,McuCan_Ext_Type);																								// KKD 2026-01-12	alm/det flag
+	for(cnt=0;cnt<3;cnt++){
+		Can_Tx_07_AdCvComFail(McuCan_Ext_Type,McuCan_Ext_Type,cnt);
+	}
+	for(cnt=0;cnt<(u8)(NSLV*2);cnt++){
+		Can_Tx_Cv(Can_Extended_Type,McuCan_Ext_Type,cnt);
+	}
+	
+	for(cnt=0;cnt<(u8)NSLV;cnt++){
+		Can_Tx_Th(Can_Extended_Type,McuCan_Ext_Type,cnt);
+	}
+
+#endif //CAN_BUF_UPATE
+}
+

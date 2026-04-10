@@ -1,0 +1,72 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(HUMIdit sensor - I2C)	                                           *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               HUMI_sht3xdis.h
+\author             KKD
+\date               2025-11-24 
+\brief              HUMIdit sensor - I2C
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __HUMI_SHT3XDIS_H__
+#define __HUMI_SHT3XDIS_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define HUMI_I2C_ADDR_A           			(0x44 << 1)                               	//KKD 2025-12-08 ADDR = GND - SHT3x I2C Address (ADDR 핀 상태에 따라 변경)
+#define HUMI_I2C_ADDR_B           			(0x45 << 1)                               	//KKD 2025-12-08 ADDR = VDD 
+
+#define HUMI_MAX_COMFAIL_COUNT		   		(10U)                                     	//KKD 2025-12-08 500ms마다 측정 
+#define HUMI_TIMEOUT_MS           			(1000U)                                   	//KKD 2025-12-08 1초 이상 응답 없으면 Timeout 
+
+#define SHT3X_CMD_HIGHRPT_NOSTRETCH_MSB  	(0x24U)                                   	//KKD 2025-12-08 SHT3x Single Shot High Repeatability, No Clock Stretching (Datasheet Table 9)
+#define SHT3X_CMD_HIGHRPT_NOSTRETCH_LSB  	(0x00U)
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum
+{
+    HErr_I2C_Fail_Type = 0,     														// I2C 통신 실패 
+    HErr_Temp_Range_Type,       														// 온도 측정범위 벗어남 
+    HErr_Rh_Range_Type,         														// 습도 측정범위 벗어남 
+    HErr_RecRange_Warn_Type,    														// Recommended Range 이탈 경고 
+    HErr_CrcFail_Type,          														// CRC 실패 
+    HErr_MAX_Type
+} eHUMIErrType;
+
+typedef struct
+{
+    float   fTemp_C;            														// 온도 [°C] 
+    float   fRh;                														// 상대습도 [%RH] 
+
+    s8  	s8Temp_C;           														// 필요 시 정수 온도 저장용
+    u8      u8CrcOk;            														// CRC 정상 여부 
+    u8      u8CommFail;         														// 측정 성공 여부 
+
+    u16     u16ErrStatus;       														// 에러 상태 비트플래그 (eHUMIErrType 사용) 
+} sHUMIData;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern sHUMIData g_sHUMIData;
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+void	HUMI_Init(void);
+void	HUMI_Proc(void);
+
+float	HUMI_GetHUMIdity_RH(void);
+float	HUMI_GetTemperature_C(void);
+u16		HUMI_GetErrStatus(void);
+
+BOOL	HUMI_DiagnosicCheck(sHUMIData *psHUMIData);
+
+#endif

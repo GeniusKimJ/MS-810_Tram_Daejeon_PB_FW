@@ -1,0 +1,235 @@
+﻿/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Hall sensor - CAN 500kbit/s)	        	                                           *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               HALL_cab1500.c
+\author             KKD
+\date               2025-11-21 
+\brief              Hall sensor - CAN 500kbit/s
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <HALL_cab1500.h>
+#include <ms_timer.h>
+/* Private define -----------------------------------------------------------------------------------*/
+
+
+/* Private macro -----------------------------------------------------------------------------------*/
+/* Private typedef ----------------------------------------------------------------------------------*/
+sHallData g_sHallData;
+/* Private variables ---------------------------------------------------------------------------------*/
+/* Private function prototypes ---------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+void Hall_Init(void)
+{
+    memset(&g_sHallData, 0, sizeof(g_sHallData));
+    g_sHallData.u16ErrStatus	= FALSE;
+    g_sHallData.bComTimout		= TRUE;         // 초기에는 미수신 상태
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+    TimerAdd( 500, Hall_CanRx_TimeoutCheck,& g_sHallData.s32TimerID );
+#endif //CAN_BUF_UPATE
+    
+}
+
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+msStatus_t Hall_RxParsing  ( uint32_t canID, u8 *pu8CanRxData )
+{
+    msStatus_t retValue = MS_ERROR;
+    switch( canID )
+    {
+        case HALL_CAN_ID:
+            Hall_CanRxParsing  ( &g_sHallData, pu8CanRxData );
+            retValue = MS_SUCCESS;
+            break;
+        default:
+            break;
+    }
+    return retValue;
+}
+#endif //CAN_BUF_UPATE
+
+void Hall_CanRxParsing(sHallData *psHallData, u8 *pu8CanRxData)
+{
+	u32	tmp = 0;   
+	u8	prevseq = g_sHallData.u8SeqCnt;                                             	//KKD 2025-12-01 befo Sequence Count
+	
+	psHallData->u8SeqCnt	= (pu8CanRxData[0] >> 4) & 0x0F;                        	//KKD 2025-11-24 BYTE 0 : Update Sequence Count
+	psHallData->u8StsPwr	= (pu8CanRxData[0] >> 2) & 0x03;                        	//KKD 2025-12-01 BYTE 0 : Diagnosic StatusPowerSupply
+	psHallData->u8StsIntErr	= (pu8CanRxData[0] >> 1) & 0x01;                        	//KKD 2025-12-01 BYTE 0 : Diagnosic StatusInternalError
+	psHallData->u8StsSgv	= (pu8CanRxData[0] >> 0) & 0x01;                        	//KKD 2025-12-01 BYTE 0 : Diagnosic SafetyGoalViolation
+
+	tmp  = ((u32)pu8CanRxData[1] << 16);
+	tmp |= ((u32)pu8CanRxData[2] << 8);
+	tmp |= ((u32)pu8CanRxData[3] << 0);
+	
+	if(tmp & 0x800000)	{ tmp |= 0xFF000000; }
+	psHallData->s32Analog = (s32)tmp;                                               	//KKD 2025-11-24 BYTE 1~3 : Analog Current
+
+	tmp	 = ((u32)pu8CanRxData[4] << 8);
+	tmp	|= ((u32)pu8CanRxData[5] << 0);
+	
+	if(tmp & 0x008000)	{ tmp |= 0xFFFF0000; }
+	psHallData->s32Digital = (s32)tmp;                                              	//KKD 2025-11-24 BYTE 4~5 : Digital Current
+
+	psHallData->u8Crc = pu8CanRxData[7];                                           		//KKD 2025-11-24 BYTE 7 : CRC
+
+
+    if(psHallData->u8SeqCnt == prevseq){
+        if(psHallData->u8SeqStuckCnt < 0xFF){
+            psHallData->u8SeqStuckCnt++;                     							//KKD 2025-12-01 같은 값이 반복됨
+        }
+    }else{
+        psHallData->u8SeqStuckCnt = 0;                       							//KKD 2025-12-01 정상적으로 바뀌면 리셋
+    }
+    
+    // 수신 Check
+    psHallData->bComTimout = FALSE;
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+    TimerRestart( psHallData->s32TimerID );
+#endif //CAN_BUF_UPATE
+}
+
+
+BOOL Hall_SM_CurrentSenseCheck(sHallData *psHallData)
+{
+	float iA  	= Hall_GetAnalogAmp(); 	
+	float iD 	= Hall_GetDigitalAmp();	
+	float absI	= FABS(iA);
+	float diff	= 0.0f;
+
+	if(psHallData->u8StsIntErr == 1){                                            		//KKD 2025-11-28 Internal Err or >1600A 
+		return FALSE;
+	}
+
+	diff = FABS(iA - iD);                                                           	//KKD 2025-11-28 diff 계산
+
+	if(absI < CURR_SG1_TH_LOW_A){                                                   	//KKD 2025-11-28 SG1 판단
+		if(diff > CURR_SG1_DIFF_LOW_A){                                             	//KKD 2025-11-28 220A 미만 오차 44A
+			return FALSE;
+		}
+	}else{
+		float th = (absI * CURR_SG1_DIFF_RATIO);                                    	//KKD 2025-11-28 220A 초과 오차 20A
+		if(diff > th){
+			return FALSE;
+		}
+	} return TRUE;
+}
+
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+msStatus_t Hall_CanRx_TimeoutCheck( void )
+{
+    g_sHallData.bComTimout = TRUE;                                             		//KKD 2025-12-01 Rx 체크 플래그 초기화
+    return MS_ENABLE;
+}
+#else  //CAN_BUF_UPATE
+void Hall_CanRx_TimeoutCheck(sHallData *psHallData)
+{
+    static u32 u32LastTime = 0;
+    u32 now = HAL_GetTick();
+
+    if ((now - u32LastTime) >= GAS_TIMEOUT_MS)
+    {
+        //if (g_sHallData.u8CommTimeout == TRUE){                                       //KKD 2025-12-01 Rx 최근 수신 체크(CAN_Rx_Done가 False 유지시 타입아웃 발생
+        //    g_sHallData.u8ErrStatus = TRUE;                                        	//KKD 2025-12-01 500ms 이상 미 수신시 Fault 발생
+        //}
+        psHallData->bComTimout = TRUE;                                             		//KKD 2025-12-01 Rx 체크 플래그 초기화
+        u32LastTime = now;
+    }
+}
+#endif //CAN_BUF_UPATE
+
+
+BOOL Hall_DiagnosicCheck(sHallData *psHallData)                                         //KKD 2025-12-02 Hall Diagnosic Check
+{
+	BOOL bSmErr = FALSE;
+
+    if(psHallData->u8SeqStuckCnt >= HALL_SEQ_STUCK_TH){
+        psHallData->u8SeqStuckErr = TRUE;                     							//KKD 2025-12-01 5회 이상 정지 에러
+    }else{
+        psHallData->u8SeqStuckErr = FALSE;
+    }
+
+	if(psHallData->u8SeqStuckErr == TRUE){                                              //KKD 2025-12-02 Diagnosic - Sequence Count Check
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_SeqStuck_Type);
+	}else{
+		psHallData->u16ErrStatus &= ~((u8)1<<HErr_SeqStuck_Type);
+	}
+
+	if(psHallData->u8StsPwr == 0b11){                                                   //KKD 2025-12-02 Diagnosic - Power Check
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_SupPwr_Type);
+	}else{
+		psHallData->u16ErrStatus &= ~((u8)1<<HErr_SupPwr_Type);
+	}
+
+	if(psHallData->u8StsIntErr == 1){                                                   //KKD 2025-12-02 Diagnosic - Internal Err
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_InterErr_Type);
+	}else{
+		psHallData->u16ErrStatus &= ~((u8)1<<HErr_InterErr_Type);
+	}
+
+	if(psHallData->u8StsSgv == 1){                                                      //KKD 2025-12-02 Diagnosic - Safety Goal Violation
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_GoalViol_Type);
+	}else{
+		psHallData->u16ErrStatus &= ~((u8)1<<HErr_GoalViol_Type);
+	}
+
+	if(psHallData->bComTimout == TRUE){
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_CanRxTimeout_Type);
+	}else{
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_CanRxTimeout_Type);
+
+	}
+
+	bSmErr = Hall_SM_CurrentSenseCheck(&g_sHallData);                                   //KKD 2025-12-02 FALSE = 이상, TRUE = 정상
+	if(bSmErr == FALSE){
+		psHallData->u16ErrStatus |= ((u8)1<<HErr_Comp_Type);
+	}else{
+		psHallData->u16ErrStatus &= ~((u8)1<<HErr_Comp_Type);
+	}
+	
+}
+
+void Hall_Proc(void)
+{
+#ifdef CAN_BUF_UPATE    //2025-12-05   jkpark  Can Buffer 관련 수정.
+	Hall_DiagnosicCheck(&g_sHallData);                                                	//KKD 2025-12-02 Diagnosic
+#else  //CAN_BUF_UPATE
+	if(g_bSenIcRxDone[SenIC_HALL_Type] == TRUE){
+		g_bSenIcRxDone[SenIC_HALL_Type] = FALSE;
+		Hall_CanRxParsing(&g_sHallData,&g_u8SenIcRxData[SenIC_HALL_Type]);              //KKD 2025-11-24 Get Current
+	}
+	Hall_DiagnosicCheck(&g_sHallData);                                                	//KKD 2025-12-02 Diagnosic
+	Hall_CanRx_TimeoutCheck(&g_sHallData);                                              //KKD 2025-12-02 CAN Rx Alive Check
+#endif //CAN_BUF_UPATE
+    
+
+}
+
+u16 Hall_GetErrStatus(void)
+{
+	return g_sHallData.u16ErrStatus;
+}
+
+float Hall_GetAnalogAmp(void)
+{
+	return (float)(g_sHallData.s32Analog * 0.001f);
+}
+
+float Hall_GetDigitalAmp(void)
+{
+	return (float)(g_sHallData.s32Digital * 0.001f);
+}
+
+u8 Hall_GetSeqCount(void)
+{
+	return g_sHallData.u8SeqCnt;
+}
+

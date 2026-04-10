@@ -1,0 +1,11 @@
+../User_Src/IMD_gqimdu2.c:38:6:IMD_Init	8	static
+../User_Src/IMD_gqimdu2.c:56:6:IMD_SetCanFlag	0	static
+../User_Src/IMD_gqimdu2.c:65:5:IMD_GetCanId	0	static
+../User_Src/IMD_gqimdu2.c:87:6:IMD_CanRxParser	8	static
+../User_Src/IMD_gqimdu2.c:119:6:IMD_DiagnosicCheck	0	static
+../User_Src/IMD_gqimdu2.c:163:6:IMD_CanRx_Timeout	8	static
+../User_Src/IMD_gqimdu2.c:173:6:IMD_Proc	8	static
+../User_Src/IMD_gqimdu2.c:188:7:IMD_GetRisoMin_kOhm	0	static
+../User_Src/IMD_gqimdu2.c:193:7:IMD_GetHvVoltage_V	0	static
+../User_Src/IMD_gqimdu2.c:198:7:IMD_GetTemperature_C	0	static
+../User_Src/IMD_gqimdu2.c:203:5:IMD_GetErrStatus	0	static

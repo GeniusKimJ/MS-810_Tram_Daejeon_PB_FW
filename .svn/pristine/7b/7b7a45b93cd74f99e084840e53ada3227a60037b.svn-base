@@ -1,0 +1,192 @@
+﻿/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(HUMIdit sensor - I2C)	        	                               *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               HUMI_sht3xdis.c
+\author             KKD
+\date               2025-11-21 
+\brief              습도센서(SHT3x-DIS) I2C 측정 및 진단 모듈
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+* 2025-12-08     v0.02    KKD    Struct/Diag 재설계, 초기화/노말/진단/처리 루틴
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "HUMI_sht3xdis.h"
+//#include <string.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+
+/* Private variables ------------------------------------------------------------------------------*/
+sHUMIData g_sHUMIData;
+
+static I2C_HandleTypeDef *s_pHUMII2c = NULL;
+static u8 s_u8HUMII2cAddr = HUMI_I2C_ADDR_A;
+
+
+/* Private function prototypes --------------------------------------------------------------------*/
+static u8	HUMI_CalcCrc(u8 *pData, u8 u8Len);
+static BOOL	HUMI_ReadSensor(sHUMIData *psHUMIData);
+//static void	HUMI_TimeoutCheck(sHUMIData *psHUMIData);
+
+/* Private functions ------------------------------------------------------------------------------*/
+static u8 HUMI_CalcCrc(u8 *pData, u8 u8Len)
+{
+    u8 crc = 0xFF;                                                     																					// Init = 0xFF
+    u8 i, b;
+
+    for (i = 0; i < u8Len; i++) {
+        crc ^= pData[i];
+        for (b = 0; b < 8; b++) {
+            if (crc & 0x80) {
+                crc = (u8)((crc << 1) ^ 0x31);                         																					// Poly = 0x31
+            } else {
+                crc <<= 1;
+            }
+        }
+    }return crc;
+}
+
+/* ==================== SHT3x 센서 단일 측정 ==================== */
+ /*  SHT3x Single Shot High Repeatability 측정 수행
+ *   psHUMIData : 측정값 저장 구조체
+ *   TRUE : 정상 측정 / FALSE : I2C or CRC Fail
+ */
+static BOOL HUMI_ReadSensor(sHUMIData *psHUMIData)
+{
+	static u8 comfailcnt = 0;
+    u8  cmd[2];
+    u8  rx[6];
+    u16	rawT, rawRh;
+
+
+    if (s_pHUMII2c == NULL) {
+        return TRUE;
+    }
+
+    /* 명령 전송 : High repeatability, no clock stretching */
+    cmd[0] = SHT3X_CMD_HIGHRPT_NOSTRETCH_MSB;   // 0x24
+    cmd[1] = SHT3X_CMD_HIGHRPT_NOSTRETCH_LSB;   // 0x00
+    if (HAL_I2C_Master_Transmit(s_pHUMII2c, s_u8HUMII2cAddr, cmd, 2, 50) != HAL_OK) {
+        return TRUE;
+    }
+
+    HAL_Delay(15);                                                                      																//KKD 2025-12-08 High repeat mode: 최대 15ms 필요 (tMEAS,h = 12.5~15ms)
+
+    if (HAL_I2C_Master_Receive(s_pHUMII2c, s_u8HUMII2cAddr, rx, 6, 50) != HAL_OK) {																		//KKD 2025-12-08 데이터 수신(T 2B + CRC, RH 2B + CRC) 
+        return TRUE;
+    }
+
+    if (rx[0] == 0xFF && rx[1] == 0xFF && rx[2] == 0xFF && 
+    	rx[3] == 0xFF && rx[4] == 0xFF && rx[5] == 0xFF){
+		if(++comfailcnt >= HUMI_MAX_COMFAIL_COUNT){
+        	psHUMIData->u8CommFail = TRUE;                                                  															//KKD 2025-12-08 Com Fail
+        	return FALSE;                   
+        }
+    }
+
+	if (HUMI_CalcCrc(&rx[0], 2) != rx[2]) { psHUMIData->u8CrcOk = FALSE; return FALSE; }																//KKD 2025-12-08 CRC chk
+	if (HUMI_CalcCrc(&rx[3], 2) != rx[5]) { psHUMIData->u8CrcOk = FALSE; return FALSE; } 																//KKD 2025-12-08 CRC chk
+
+    rawT  = (u16)(((u16)rx[0] << 8) | rx[1]);                                           																//KKD 2025-12-08 Parse
+    rawRh = (u16)(((u16)rx[3] << 8) | rx[4]);                                           																//KKD 2025-12-08 Parse
+
+    psHUMIData->fTemp_C		= -45.0f + (175.0f * (float)rawT  / 65535.0f);                  															//KKD 2025-12-08 (Datasheet 4.13 Conversion)
+    psHUMIData->fRh     	= 100.0f * (float)rawRh / 65535.0f;
+
+    psHUMIData->s8Temp_C	= (int8_t)(psHUMIData->fTemp_C);
+
+    psHUMIData->u8CommFail	= FALSE;
+	comfailcnt = 0;
+    return TRUE;
+}
+
+void HUMI_Init(void)
+{
+    memset(&g_sHUMIData, 0, sizeof(g_sHUMIData));
+
+    s_pHUMII2c     				= &hi2c1;
+    s_u8HUMII2cAddr 			= HUMI_I2C_ADDR_A;
+
+    g_sHUMIData.fTemp_C     	= -40.0f;
+    g_sHUMIData.fRh         	= 0.0f;
+    g_sHUMIData.s8Temp_C    	= -40;
+    g_sHUMIData.u8CrcOk     	= FALSE;
+    g_sHUMIData.u8CommFail		= FALSE;
+    g_sHUMIData.u16ErrStatus	= FALSE;
+}
+
+BOOL HUMI_DiagnosicCheck(sHUMIData *psHUMIData) 
+{
+    if (psHUMIData->u8CommFail == TRUE) {                                            																	//KKD 2025-12-08 Timeout
+        psHUMIData->u16ErrStatus |=((u16)1 << HErr_I2C_Fail_Type);
+    } else {
+        psHUMIData->u16ErrStatus &= ~((u16)1 << HErr_I2C_Fail_Type);
+    }
+
+    if (psHUMIData->u8CrcOk == TRUE) {                                                 																	//KKD 2025-12-08 CRC fail
+        psHUMIData->u16ErrStatus |= ((u16)1 << HErr_CrcFail_Type);
+    } else {
+        psHUMIData->u16ErrStatus &= ~((u16)1 << HErr_CrcFail_Type);
+    }
+
+    if ((psHUMIData->fTemp_C < -40.0f) || (psHUMIData->fTemp_C > 125.0f)) {             																//KKD 2025-12-08 온도 범위 체크(Datasheet: T -40~125°C, RH 0~100%RH)
+        psHUMIData->u16ErrStatus |= ((u16)1 << HErr_Temp_Range_Type);
+    } else {
+        psHUMIData->u16ErrStatus &= ~((u16)1 << HErr_Temp_Range_Type);
+    }
+
+    if ((psHUMIData->fRh < 0.0f) || (psHUMIData->fRh > 100.0f)) {                       																//KKD 2025-12-08 습도 범위 체크 (0%~100%)
+        psHUMIData->u16ErrStatus |= ((u16)1 << HErr_Rh_Range_Type);
+    } else {
+        psHUMIData->u16ErrStatus &= ~((u16)1 << HErr_Rh_Range_Type);
+    }
+
+    if ( (psHUMIData->fTemp_C < 5.0f) || (psHUMIData->fTemp_C > 60.0f) ||               																//KKD 2025-12-08 권장 범위 체크 (T 5~60°C, RH 20~80%RH)
+         (psHUMIData->fRh < 20.0f) || (psHUMIData->fRh > 80.0f) ) {
+        psHUMIData->u16ErrStatus |= ((u16)1 << HErr_RecRange_Warn_Type);
+    } else {
+        psHUMIData->u16ErrStatus &= ~((u16)1 << HErr_RecRange_Warn_Type);
+    }
+
+    if (psHUMIData->u16ErrStatus & (                                                     																//KKD 2025-12-08 Fault (통신 Fail/Timeout/CRCFail/RangeError 등)
+		((u16)1 << HErr_I2C_Fail_Type)		|
+        ((u16)1 << HErr_CrcFail_Type)  		|
+        ((u16)1 << HErr_Temp_Range_Type)	|
+        ((u16)1 << HErr_Rh_Range_Type)		|
+        ((u16)1 << HErr_RecRange_Warn_Type) ) ) {
+        return TRUE;    
+    }
+    return FALSE;                                                                        																//KKD 2025-12-08 Warning
+}
+
+void HUMI_Proc(void)
+{   
+    HUMI_ReadSensor(&g_sHUMIData);
+    HUMI_DiagnosicCheck(&g_sHUMIData);
+}
+
+
+float HUMI_GetHUMIdity_RH(void)
+{
+    return g_sHUMIData.fRh;
+}
+
+float HUMI_GetTemperature_C(void)
+{
+    return g_sHUMIData.fTemp_C;
+}
+
+u16 HUMI_GetErrStatus(void)
+{
+    return g_sHUMIData.u16ErrStatus;
+}
+

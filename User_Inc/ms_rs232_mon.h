@@ -1,0 +1,58 @@
+﻿/*=================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(RS232 monitoring)	        	                                   *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2026-01-12                                                              	   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_rs232_mon.c
+\author             KKD
+\date               2026-01-12 
+\brief              RS232 monitoring
+*********************************************
+* History:
+* 2026-01-12     v0.01    KKD    Create
+*==================================================================================================*/
+
+#ifndef MS_RS232_MON_H_
+#define MS_RS232_MON_H_
+
+/* Includes ---------------------------------------------------------------------------------------*/
+//#include <ms_main.h>
+
+#include "ms_config.h"
+#include "ms_uart.h"
+#include "ms_boot.h"
+#include "ms_flash.h"
+#include "EEP_m24256a.h"
+#include <stddef.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+void Uart1_CalPackVoltage(u8 *tx, u8 *rx);
+void Uart1_CalPackCurrent(u8 *tx, u8 *rx);
+void Uart1_CalAUXVoltage(u8 *tx, u8 *rx) ;
+
+void 	Uart1_Uart1Function(void);
+void 	Uart1_Uart1BootFunction(void);
+void	Uart1_BootDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Txd *boot);
+void 	Uart1_BootEndDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_TxBootEnd *btend);
+void 	Uart1_BmuDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Bmu *bmu);
+void 	Uart1_CmuDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Cmu *cmu);
+void 	Uart1_CalSystem(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Cal *cal);
+void 	Uart1_EEPDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Eep *eep);
+void 	Uart1_ManualMode(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Mnl *mnl);
+void 	Uart1_Manual_FetRelay0xFC_Mode(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Mnl *mnl);
+void 	DetDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Det *det);
+void	Uart1_Proc(void);
+void    Uart1_Init(void);
+void    Uart1_Rx1Function(void);
+
+#endif /* MS_RS232_MON_H_ */

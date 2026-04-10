@@ -1,0 +1,495 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(cal soc soh)			                                               *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_soc.c
+\author             KKD
+\date               2025-11-21 
+\brief              SOC 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_soc.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+//#define 	CONSTSOCMIN		((u32)0U)				// SOC Min CONST
+#define 	CONSTSOCMAX		((u32)100U*10U)		// SOC Max CONST
+#define 	CONSTSOCDIF		(CONSTSOCMAX)				// SOC Dif CONST
+
+
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+static u16	GetSoc[AVGSOC];
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+void SOC_Init(void) {
+	RackPkt.soh 		= 100;
+	RackPkt.soc 		= 500;
+	RackPkt.dlyvsoc 	= 0;
+
+	RackPkt.fullcap 	= (u32)CONSTFULLCAP;
+	RackPkt.ratefullcap	= (u32)((u32)CONSTCRATE * 3600UL);
+}
+
+
+void SOC_CycleCount(s32 pi1sec, u32 ratfullcap) {
+
+	if(pi1sec > 0) {
+		RackPkt.cyclecap += (u32)pi1sec;	// ���� ���갪
+		if(RackPkt.cyclecap > (ratfullcap/100UL*80U)) {				// 80% charge
+			RackPkt.cyclecap = RackPkt.cyclecap - (ratfullcap/100UL*80U);
+			RackPkt.cyccnt++;
+		}
+	}
+}
+
+
+#define	CONSTSOH_CYC			(100U)								// cycle_cnt / SOH1%
+void SOC_StateOfHealth(u16 cyccnt) {
+	static u16  	SavCntCyc 	= 0xFFFF;
+
+	if(SavCntCyc != cyccnt) {
+		SavCntCyc = cyccnt;
+		if(cyccnt > (30U*CONSTSOH_CYC)) {
+			RackPkt.soh = 70;
+		} else {
+			RackPkt.soh = (u16)(100U - (cyccnt/CONSTSOH_CYC));
+		}
+		RackPkt.ratefullcap = RackPkt.fullcap/100UL*RackPkt.soh;
+	}
+}
+
+u32 SOC_CompensateCap(u32 ratfulcap, s16 th) {
+	 const s16 Tct[5U][5U] = {							// Temp & Crate Table 0.01%unit
+		{	6461,	5424,	4097,	3779,	-20	},			// -20��
+		{	9534,	9095,	8441,	8198,	0	},			// 0��
+		{	10547,	10382,	10432,	9984,	25	},			// 25��
+		{	10568,	10683,	10494,	10462,	50	},			// 50��
+		{	200,	500,	1000,	2000,	0	},			// 0.2C, 0.5C, 1C, 2C
+	};
+	u8		k, i;
+	s16 	ctable[4];												// 0.01% Unit,
+	s32		i32_data;
+	///s16		crate = (-1000L * RackPkt.pi[I1SEC]) / CONSTCRATE;		// 1mC Unit
+	s16		crate;										// 1mC Unit
+	double_t 	d64_buf[6];
+	s32 	i32_buf[1];
+
+	d64_buf[0] = (double_t)RackPkt.pi[I1SEC];
+	d64_buf[1] = (double_t)1000L * d64_buf[0];
+	d64_buf[2] = d64_buf[1] / (double_t)CONSTCRATE;
+	i32_buf[0] = (s32)d64_buf[2] * (s32)(-1L);
+	crate = (s16)i32_buf[0];
+
+	th /= 10;														// 1??Unit
+
+	if(th < Tct[1][4]) {
+		i = 0;
+	}else if (th < Tct[2][4]) {
+		i = 1;
+	}else {
+		i = 2;
+	}
+
+	for(k = 0; k < 4U; k++) {
+		///ctable[k] = Tct[i][k] + ((s32)(th - Tct[i][4U]) * (s32)(Tct[i+1U][k] - Tct[i][k])/(s32)(Tct[i+1U][4U] - Tct[i][4U]));
+		d64_buf[0] = (double_t)th - (double_t)Tct[i][4U];
+		d64_buf[1] = (double_t)Tct[i+1U][k] - (double_t)Tct[i][k];
+		d64_buf[2] = (double_t)Tct[i+1U][4U] - (double_t)Tct[i][4U];
+		d64_buf[3] = d64_buf[0] * d64_buf[1];
+		d64_buf[4] = d64_buf[3] / d64_buf[2];
+		d64_buf[5] = (double_t)Tct[i][k] + d64_buf[4];
+		ctable[k] = (s16)d64_buf[5];
+	}
+
+	if(crate < (s16)0L) {
+		i32_data = 10000L;						// Charging
+	}
+	else if (crate < Tct[4][1]) {
+		///i32_data = (s32)ctable[0] + ((((s32)(ctable[1] - ctable[0]) * (s32)(crate - Tct[4][0]))/(s32)(Tct[4][1] - Tct[4][0])));
+		d64_buf[0] = (double_t)ctable[1] - (double_t)ctable[0];
+		d64_buf[1] = (double_t)crate - (double_t)Tct[4][0];
+		d64_buf[2] = (double_t)Tct[4][1] - (double_t)Tct[4][0];
+		d64_buf[3] = (d64_buf[0] * d64_buf[1]);
+		d64_buf[4] = d64_buf[3] / d64_buf[2];
+		d64_buf[5] = (double_t)ctable[0] +  d64_buf[4];
+		i32_data = (s32)d64_buf[5];
+
+	} else if (crate < Tct[4][2]) {
+		///i32_data = (s32)ctable[1]+((((s32)(ctable[2]-ctable[1])*(s32)(crate-Tct[4][1]))/(s32)(Tct[4][2]-Tct[4][1])));
+		d64_buf[0] = (double_t)ctable[2] - (double_t)ctable[1];
+		d64_buf[1] = (double_t)crate - (double_t)Tct[4][1];
+		d64_buf[2] = (double_t)Tct[4][2] - (double_t)Tct[4][1];
+		d64_buf[3] = (d64_buf[0] * d64_buf[1]);
+		d64_buf[4] = d64_buf[3] / d64_buf[2];
+		d64_buf[5] = (double_t)ctable[1] +  d64_buf[4];
+		i32_data = (s32)d64_buf[5];
+	} else {
+		///i32_data = (s32)ctable[2]+(((s32)(ctable[3]-ctable[2])*(s32)(crate-Tct[4][2]))/(s32)(Tct[4][3]-Tct[4][2]));
+		d64_buf[0] = (double_t)ctable[3] - (double_t)ctable[2];
+		d64_buf[1] = (double_t)crate - (double_t)Tct[4][2];
+		d64_buf[2] = (double_t)Tct[4][3] - (double_t)Tct[4][2];
+		d64_buf[3] = (d64_buf[0] * d64_buf[1]);
+		d64_buf[4] = d64_buf[3] / d64_buf[2];
+		d64_buf[5] = (double_t)ctable[2] +  d64_buf[4];
+		i32_data = (s32)d64_buf[5];
+	}
+
+	if(i32_data > 10000L) {
+		i32_data = 10000L;
+	}
+	if(i32_data < 0L) {
+		i32_data = 0L;
+	}
+
+	///i32_data *= ((s32)RackPkt.ratefullcap/10000L);
+	///return (u32)((s32)RackPkt.ratefullcap-i32_data);
+	d64_buf[0] = (double_t)RackPkt.ratefullcap / (double_t)10000L;
+	d64_buf[1] = (double_t)i32_data * d64_buf[0];
+	d64_buf[2] = (double_t)RackPkt.ratefullcap - d64_buf[1];
+	return (u32)d64_buf[2];
+}
+
+
+u32 SOC_BoltzmannCap(u16 cvavg, u32 ratfulcap) {
+	/*
+	const u16 OcvSoc[101U] = {					// SM3 2?��? 모듈 OCV Table
+			3114,	3162,	3210,	3258,	3306,	3354,	3369,	3383,	3397,	3412,
+			3426,	3430,	3435,	3439,	3444,	3449,	3456,	3464,	3472,	3480,
+			3487,	3495,	3502,	3509,	3516,	3524,	3529,	3534,	3540,	3545,
+			3550,	3555,	3559,	3563,	3568,	3572,	3576,	3580,	3583,	3587,
+			3591,	3595,	3599,	3604,	3608,	3612,	3617,	3621,	3626,	3631,
+			3635,	3641,	3646,	3651,	3656,	3661,	3669,	3677,	3685,	3693,
+			3701,	3709,	3718,	3726,	3735,	3743,	3753,	3764,	3774,	3784,
+			3794,	3806,	3818,	3830,	3842,	3854,	3864,	3874,	3884,	3894,
+			3905,	3915,	3925,	3935,	3946,	3956,	3965,	3973,	3982,	3991,
+			4000,	4012,	4023,	4035,	4046,	4058,	4074,	4091,	4107,	4123,
+			4140
+	};
+     */
+    const u16 OcvSoc[101] = {          // H-rotem SK-ON E556
+	    3102,     3150,    3199,    3247,     3296,    3344,    3353,     3362,    3371,    3380,
+	    3389,     3401,    3412,    3424,     3435,    3447,    3457,     3467,    3477,    3487,
+	    3497,     3504,    3511,    3517,     3524,    3531,    3535,     3539,    3544,    3548,
+	    3552,     3557,    3561,    3566,     3570,    3575,    3579,     3583,    3587,    3591,
+	    3595,     3600,    3605,    3609,     3614,    3619,    3627,     3635,    3644,    3652,
+	    3660,     3672,    3684,    3695,     3707,    3719,    3730,     3741,    3752,    3763,
+	    3774,     3783,    3791,    3800,     3808,    3817,    3826,     3835,    3843,    3852,
+	    3861,     3869,    3877,    3885,     3893,    3901,    3911,     3921,    3932,    3942,
+	    3952,     3963,    3973,    3984,     3994,    4005,    4012,     4018,    4025,    4031,
+	    4038,     4045,    4052,    4060,     4067,    4074,    4096,     4118,    4141,    4163,
+	    4185
+};
+
+	u8 quota = (sizeof(OcvSoc)/sizeof(u16))/8U;
+	float_t		fsoc;
+	double_t 	d64_buf[4];
+
+	if(cvavg < OcvSoc[quota*4U]) {
+		if(cvavg < OcvSoc[quota*2U]) {
+			if(cvavg < OcvSoc[quota]) {
+				quota = 0U;
+			} else {
+				quota = quota * 1U;
+			}
+		} else {
+			if(cvavg < OcvSoc[quota*3U]) {
+				quota = quota * 2U;
+			}else{
+				quota = quota * 3U;
+			}
+		}
+	} else {
+		if(cvavg < OcvSoc[quota*6U]) {
+			if(cvavg < OcvSoc[quota*5U]) {
+				quota = quota * 4U;
+			} else {
+				quota = quota * 5U;
+			}
+		} else {
+			if(cvavg < OcvSoc[quota*7U])	{
+				quota = quota * 6U;
+			} else {
+				quota = quota * 7U;
+			}
+		}
+	}
+
+	for(; quota < (sizeof(OcvSoc)/sizeof(s16)); quota++) {
+		if(cvavg <= OcvSoc[quota]) {
+			break;
+		}
+	}
+	if(quota >= ((sizeof(OcvSoc)/sizeof(s16))-1U)) {
+		quota = 100U;
+	}
+
+	if(quota == 0U) {
+		fsoc = (float_t)0.;
+	}
+	else  if(quota == 100U) {
+		fsoc = (float_t)100.;
+	} else {
+		if(OcvSoc[quota] == OcvSoc[quota-1U]) {
+			fsoc = (float_t)quota;
+		} else {
+			///fsoc = (float_t)quota - ((float_t)(OcvSoc[quota] - cvavg)/(float_t)(OcvSoc[quota]-OcvSoc[quota-1U]));
+			d64_buf[0] = (double_t)OcvSoc[quota] - (double_t)cvavg;
+			d64_buf[1] = (double_t)OcvSoc[quota] - (double_t)OcvSoc[quota-1U];
+			d64_buf[2] = d64_buf[0] / d64_buf[1];
+			d64_buf[3] = (double_t)quota - d64_buf[2];
+			fsoc = (float_t)d64_buf[3];
+		}
+	}
+
+	///return (u32)(fsoc*(float_t)ratfulcap/100.);
+	d64_buf[0] = (double_t)fsoc * (double_t)ratfulcap;
+	d64_buf[1] = d64_buf[0] / (double_t)100.;
+	return (u32)d64_buf[1];
+}
+
+
+//full cap mah x 3600  106000 x 3600 = 381,600,000
+void SOC_StateOfCharge(u32 ratfulcap, u16 cvavg, s32 pi1sec, u32 fdet) {
+	static u8	AvgCnt = AVGSOC-1U, Cnt1s = 0U, cnttick = 0U;
+	static u32 	CompenCap = 0;
+	static u32 	cntvsoc = 0;
+	//static u8	rstdatcap = 0;
+	static u8	fullchsts = 0;
+	u32 		socrat;
+	//s32 		diffsocrat;
+	static s16	PreAvgCv = 0x5555;
+	u32			avgsum, icap, vcap;
+	u8 			k, fvsoci, fvsocv;
+	u32			u32_buf;
+	double_t 	d64_buf[4];
+	s32 		i32_buf[2];
+	double_t	diff;
+
+	if(++Cnt1s > 10U) {
+		Cnt1s = 1U;
+	}
+
+	switch(Cnt1s) {
+	case 1:
+		if(((s32)RackPkt.datacap + pi1sec) > 0L) {
+			///RackPkt.datacap += pi1sec;
+			i32_buf[0] = (s32)RackPkt.datacap;
+			i32_buf[0] += pi1sec;
+			RackPkt.datacap = (u32)i32_buf[0];
+        } else {
+        	RackPkt.datacap = 0U;
+       	}
+
+		if(((fdet & FCUVP) != 0U) && (cvavg < 3200U)){	// soc reset
+			RackPkt.datacap = 0U;
+		}else if(fullchsts == 1U){
+			RackPkt.datacap = ratfulcap;
+			fullchsts = 2;
+		}else{
+			if(RackPkt.pi[IREAL] > (-5000)){
+				fullchsts = 0;
+			}
+		}
+
+		if(RackPkt.datacap > ratfulcap) {
+			RackPkt.datacap = ratfulcap;
+		}
+		break;
+
+	case 4:
+		///if((u32)abs((s16)cvavg - PreAvgCv) < 30U) {
+		i32_buf[0] = (s32)cvavg - (s32)PreAvgCv;
+		if(abs(i32_buf[0]) < (s32)30U) {
+			fvsocv = 1U;
+		} else {
+			fvsocv = 0U;
+		}
+		if(PreAvgCv == 0x5555) {
+			fvsocv = 1U;
+		}
+		PreAvgCv = (s16)cvavg;
+
+		///if(labs(pi1sec) < (CONSTCRATE/20UL)) {
+		i32_buf[0] = (s32)pi1sec;
+		if(labs(i32_buf[0]) < ((s32)CONSTCRATE/(s32)20UL)) {
+			fvsoci = 1U;
+		} else {
+			fvsoci = 0U;
+		}
+
+		if((fvsoci != 0U) && (fvsocv != 0U)) {
+			vcap = SOC_BoltzmannCap(cvavg, ratfulcap);
+			if(RackPkt.dlyvsoc >= CONSTCNTVSOC) {
+				RackPkt.datacap = vcap;
+				cntvsoc = 0;
+				cnttick = 0;
+			} else {
+				++RackPkt.dlyvsoc;
+				if(++cnttick >= CONSTSOCTICK) {																// CONSTSOCTICK : sec unit
+					cnttick = 0;
+					cntvsoc++;
+				//koo socrat = labs(RackPkt.datacap - vcap) / (ratfulcap/100000UL) * CntVSoc * CntVSoc * CntVSoc;
+					diff = (double_t)RackPkt.datacap - (double_t)vcap;
+					if(diff<(double_t)0)	{diff = (diff * (double_t)(-1));}
+					d64_buf[0] = diff/ ((double_t)ratfulcap / (double_t)100000L);
+					d64_buf[1] = d64_buf[0] * (double_t)cntvsoc * (double_t)cntvsoc * (double_t)cntvsoc;
+					socrat	= (u32)d64_buf[1];
+				
+				//koo vcap = (u32)( (float)vcap * socrat / CONSTSOCRATE);								// vcap = DataVCap * 0.0000001
+					d64_buf[0] = ((double_t)vcap * (double_t)socrat);
+					d64_buf[1] = d64_buf[0] / (double_t)CONSTSOCRATE;
+					vcap = (u32)d64_buf[1];
+	
+				//koo icap = (u32)( (float)RackPkt.datacap * (float)(CONSTSOCRATE - socrat) / CONSTSOCRATE);	// icap = DataCap  * 0.9999999
+					d64_buf[0] = ((double_t)CONSTSOCRATE - (double_t)socrat);
+					d64_buf[1] = (double_t)RackPkt.datacap * d64_buf[0];
+					d64_buf[2] = d64_buf[1] / (double_t)CONSTSOCRATE;
+					icap = (u32)d64_buf[2];
+					RackPkt.datacap = icap + vcap;
+				}
+			}
+		} else {
+			cntvsoc = 0;
+			cnttick = 0;
+			RackPkt.dlyvsoc = 0;
+
+		}
+		break;
+
+	case 6:
+//		CompenCap = SOC_CompensateCap(ratfulcap, RackPkt.avgth);
+		CompenCap = 0;
+		break;
+
+	case 8:
+		if(++AvgCnt >= (u8)AVGSOC) {
+			AvgCnt = 0U;
+		}
+		if((u32)RackPkt.datacap > (u32)CompenCap) {
+			///GetSoc[AvgCnt] = (s32)((RackPkt.datacap-CompenCap)/((ratfulcap-CompenCap)/1000UL));	// (Capacity/fullcapcity)*1000 -> 0.1% Unit
+			d64_buf[0] = (double_t)RackPkt.datacap - (double_t)CompenCap;
+			d64_buf[1] = (double_t)ratfulcap - (double_t)CompenCap;
+			d64_buf[2] = d64_buf[1]/(double_t)1000UL;
+			d64_buf[3] = d64_buf[0]/d64_buf[2];
+			GetSoc[AvgCnt] = (u16)d64_buf[3];
+		} else {
+			GetSoc[AvgCnt] = 0;
+		}
+		avgsum = 0;
+		for(k = 0; k < AVGSOC; k++) {
+			avgsum += GetSoc[k];
+		}
+		//RackPkt.soc = (u16)avgsum/AVGSOC;
+		u32_buf = avgsum / (u32)AVGSOC;
+#ifdef ENMN
+		if(g_sMn.mn_set_soc > 0U){
+		}else{
+#endif
+			RackPkt.soc = (u16)u32_buf;
+#ifdef ENMN
+		}
+#endif		
+		if(RackPkt.soc > (u16)1000U) {
+			RackPkt.soc = 1000U;
+		}
+
+		if(RackPkt.soc >= (u16)CONSTSOCMAX) {
+			RackPkt.soc = 1000U;
+		} else {
+			///RackPkt.soc = ((s32)((RackPkt.soc - CONSTSOCMIN) * 1000L) / CONSTSOCDIF);
+			///RackPkt.soc = ((s32)(RackPkt.soc * 1000L) / CONSTSOCDIF);
+			d64_buf[0] = (double_t)RackPkt.soc * (double_t)1000L;
+			d64_buf[1] = d64_buf[0] / (double_t)CONSTSOCDIF;
+			RackPkt.soc = (u16)d64_buf[1];
+		}break;
+
+	case 9:
+		break;
+
+	default:
+		break;
+	}
+}
+
+
+void SOC_Init_StateOfCharge(u32 ratfulcap, u16 cvavg) {
+	u32 	icap = 0U, vcap = 0U, initvap = 0U;
+	u32 	socrat, cntvsoc;
+	u16 	cnt, cnttick;
+	//s32 	diffsocrat;
+	double_t 	d64_buf[4];
+	double_t	diff;
+
+	initvap = SOC_BoltzmannCap(cvavg, ratfulcap);
+
+	if(RackPkt.dlyvsoc >= (u16)CONSTCNTVSOC) {
+		RackPkt.datacap = initvap;
+	} else {
+		cntvsoc = 0U;
+		cnttick = 0U;
+		for(cnt = 0; cnt < RackPkt.dlyvsoc; cnt++ ) {
+			if(++cnttick > CONSTSOCTICK) {
+				cnttick = 0;
+				cntvsoc++;
+ 
+			//koo socrat = labs(RackPkt.datacap - vcap) / (ratfulcap/100000UL) * CntVSoc * CntVSoc * CntVSoc;
+				diff = (double_t)RackPkt.datacap - (double_t)vcap;
+				if(diff<(double_t)0)	{diff = (diff * (double_t)(-1));}
+				d64_buf[0] = diff/ ((double_t)ratfulcap / (double_t)100000L);
+				d64_buf[1] = d64_buf[0] * (double_t)cntvsoc * (double_t)cntvsoc * (double_t)cntvsoc;
+				socrat	= (u32)d64_buf[1];
+			
+			//koo vcap = (u32)( (float)initvap * socrat / CONSTSOCRATE );								// vcap = DataVCap * 0.0000001
+				d64_buf[0] = ((double_t)initvap * (double_t)socrat);
+				d64_buf[1] = d64_buf[0] / (double_t)CONSTSOCRATE;
+				vcap = (u32)d64_buf[1];
+
+			//koo icap = (u32)( (float)RackPkt.datacap * (float)(CONSTSOCRATE - socrat) / CONSTSOCRATE);	// icap = DataCap  * 0.9999999
+				d64_buf[0] = ((double_t)CONSTSOCRATE - (double_t)socrat);
+				d64_buf[1] = (double_t)RackPkt.datacap * d64_buf[0];
+				d64_buf[2] = d64_buf[1] / (double_t)CONSTSOCRATE;
+				icap = (u32)d64_buf[2];
+				RackPkt.datacap = icap + vcap;
+			}
+		}
+	}
+
+	///RackPkt.soc = (RackPkt.datacap/(ratfulcap/1000L));								// (Capacity/fullcapcity)*1000 -> 0.1% Unit
+	d64_buf[0] = ((double_t)ratfulcap / (double_t)1000L);
+	d64_buf[1] = (double_t)RackPkt.datacap / d64_buf[0];
+	RackPkt.soc = (u16)d64_buf[1];
+
+	if(RackPkt.soc > (u16)1000U) {
+		RackPkt.soc = 1000U;
+	}
+	for(cnt = 0; cnt < AVGSOC; cnt++) {
+		GetSoc[cnt] = RackPkt.soc;
+	}
+
+	if(RackPkt.soc <= (u16)0L) {
+		RackPkt.soc = 0U;
+	} else if(RackPkt.soc >= (u16)CONSTSOCMAX) {
+		RackPkt.soc = 1000U;
+	} else {
+		///RackPkt.soc = ((s32)((RackPkt.soc - CONSTSOCMIN) * 1000L) / CONSTSOCDIF);
+		///RackPkt.soc = ((s32)((RackPkt.soc) * 1000L) / CONSTSOCDIF);
+		d64_buf[0] = (double_t)RackPkt.soc * (double_t)1000L;
+		d64_buf[1] = d64_buf[0] / (double_t)CONSTSOCDIF;
+		RackPkt.soc = (u16)d64_buf[1];
+	}
+}
+
+
+
+

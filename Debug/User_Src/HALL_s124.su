@@ -1,0 +1,2 @@
+../User_Src/HALL_s124.c:29:6:HALL_s124_InitGain	0	static
+../User_Src/HALL_s124.c:42:6:HALL_s124_GetCurrent	64	static

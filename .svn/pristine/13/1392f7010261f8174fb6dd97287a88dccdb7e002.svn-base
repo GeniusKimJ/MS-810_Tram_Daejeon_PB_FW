@@ -1,0 +1,87 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Real time clock)                                           			  *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                               		   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               RTC_mcp7940a.h
+\author             KKD
+\date               2025-11-24 
+\brief              Real time clock
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __RTC_MCP7940A_H__
+#define __RTC_MCP7940A_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+/*
+ * MCP7940N Slave Address
+ * 7bit address = 0x6F
+ * I2C 8bit write = 0xDE, read = 0xDF
+ */
+#define SLVMCP7940          	(0xDE)
+
+/* MCP7940N RTC Register length (00h~06h) */
+#define MCP7940_RTCDATA_LEN 	(7U)
+
+/*
+ * MCP7940N SRAM
+ * 0x20 ~ 0x5F : 64 Bytes usable
+ *
+ * 기존 DS1307 RAMADR = 0x08 을 그대로 재사용 불가 → MCP7940N은 0x20부터 시작
+ * 하지만 상위 소스 구조를 유지하기 위해 MCP7940_SRAM_ADDR 고정 정의
+ */
+#define MCP7940_SRAM_ADDR		(0x20U)						// Time Save Address
+#define MCP7940_SRAM_ACAP		(MCP7940_SRAM_ADDR+4*sizeof(long))		// Capacity Save Address
+#define MCP7940_SRAM_ACCA		(MCP7940_SRAM_ACAP+4*sizeof(long))		// One Cycle Discharge Capacity
+#define MCP7940_SRAM_ACNT		(MCP7940_SRAM_ACCA+4*sizeof(long))		// Cycle count
+
+#define RAMADR					    (0x08U)						// Ram Start Address
+#define MCP7940_SRAM_SIZE   (64U)
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+/* DS1307에서 사용한 구조체 그대로 사용 (28 bytes) */
+#pragma pack(push,1)
+typedef struct{
+    uint32_t  time;          	// (4)
+    uint32_t  bmsontime;     	// (4)
+    uint32_t  cap;          	 // (4)
+    uint32_t  cyclecap;      	// (4)
+    uint16_t  cyccnt;        	// (2)
+    uint16_t  errcnt;        	// (2)
+    uint16_t  norcnt;        	// (2)
+    uint32_t  tot_dch_pw;    	// (4)
+    uint8_t   reserved[1];   	// (1)
+    uint8_t   crc;           	// (1)
+} sMCP7940_Ram;           		// = 28 Bytes 동일
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern const u8	TwiCRC[256];
+extern u8  		MCP7940_RTC[MCP7940_RTCDATA_LEN];
+extern u8  		fCheckRtc;
+
+extern sMCP7940_Ram RamPkt;
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+u8 Bcd2Dec(u8 val);
+u8 Dec2Bcd(u8 val);
+void SetLocalTime(uint8_t *rtc);
+void GetLocalTime(uint8_t *rtc);
+
+void GetSocToMcp7940(void);
+void SaveSocToMcp7940(uint8_t *rtc);
+
+
+
+
+#endif //__RTC_MCP7940A_H__
+

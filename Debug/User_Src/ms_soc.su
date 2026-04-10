@@ -1,0 +1,7 @@
+../User_Src/ms_soc.c:35:6:SOC_Init	0	static
+../User_Src/ms_soc.c:45:6:SOC_CycleCount	0	static
+../User_Src/ms_soc.c:58:6:SOC_StateOfHealth	0	static
+../User_Src/ms_soc.c:72:5:SOC_CompensateCap	184	static
+../User_Src/ms_soc.c:164:5:SOC_BoltzmannCap	280	static
+../User_Src/ms_soc.c:263:6:SOC_StateOfCharge	88	static
+../User_Src/ms_soc.c:425:6:SOC_Init_StateOfCharge	96	static

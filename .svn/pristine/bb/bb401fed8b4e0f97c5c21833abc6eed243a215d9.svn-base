@@ -1,0 +1,272 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Contector Operating Sequence)                                       *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_relay.h
+\author             KKD
+\date               2025-11-21 
+\brief              Contector Sequence
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_relay.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+sHvRelayStatus g_sRelayStatus;
+
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+void Relay_Init(void)
+{
+	memset(&g_sRelayStatus, 0x00, sizeof(g_sRelayStatus));
+}
+
+static BOOL Rly_DelayCheck(sHvRelayStatus *pRly)
+{
+    if (++pRly->u8HvRly_Delay >= 5) {
+        pRly->u8HvRly_Delay = 0;
+        return TRUE;
+    }return FALSE;
+}
+
+void Relay_01_Status(sHvRelayStatus *pRly)
+{
+	Relay_Start_BTMS();
+	
+    if((RackPkt.fdet & 0xFFFFFF) != 0U){																												//KKD 2025-12-11 MAIN Relay 상태 설정
+		//Relay_Stop_Main();
+	}
+
+
+	/* Todo : BTMS 통신 회복시 BTMS 릴레이 붙는 시퀀스 */
+	//Fault 해지시 -> pRly->bHvRly_BtmsOnDone = FALSE
+
+	
+	/* 1) BTMS RELAY ON */
+
+    switch (pRly->u8HvRly_B_Status){
+        case 1:                                                                     																	//KKD 2025-12-11 B_N ON
+			pRly->u8HvRly_Status = BPRE;
+            if (Rly_DelayCheck(pRly) == TRUE) {
+                pRly->u8HvRly_B_Status = 2;
+            }break;
+
+        case 2:                                                                     																	//KKD 2025-12-11 B_P ON
+			pRly->u8HvRly_Status |= BNCK;
+            if (Rly_DelayCheck(pRly) == TRUE) {
+                pRly->u8HvRly_B_Status = 3;
+            }break;
+
+        case 3:         // B_PRE OFF → 완료
+			pRly->u8HvRly_Status |= BPCK;
+            if (Rly_DelayCheck(pRly) == TRUE) {
+				pRly->u8HvRly_B_Status = 4;
+            }break;
+
+		case 4:
+			pRly->u8HvRly_Status &= ~(BPRE);
+			if (Rly_DelayCheck(pRly) == TRUE) {
+				pRly->u8HvRly_B_Status = HV_STATUS_DONE;
+			}break;
+
+        case HV_STATUS_DONE:
+			if(pRly->bHvRly_BtmsOnDone == FALSE){
+				if (Rly_DelayCheck(pRly) == TRUE){ 
+					Relay_Start_Main();
+					pRly->bHvRly_BtmsOnDone = TRUE;
+				}
+			}break;
+        
+        default:
+        	break;
+    }																											//KKD 2025-12-11 BTMS 완료 전에는 MAIN 시퀀스 실행 안함
+
+
+	/* 2) MAIN RELAY ON */
+    switch (pRly->u8HvRly_M_Status){
+        case 1:                                                                         																//KKD 2025-12-11 M_PRE ON
+			pRly->u8HvRly_Status |= MPRE;
+            if (Rly_DelayCheck(pRly) == TRUE){
+                pRly->u8HvRly_M_Status = 2;
+            }break;
+
+        case 2:                                                                        																	//KKD 2025-12-11 M_N ON
+			pRly->u8HvRly_Status |= MNCK;
+            if (Rly_DelayCheck(pRly) == TRUE){
+                pRly->u8HvRly_M_Status = 3;
+            }break;
+
+        case 3:                                                                         																//KKD 2025-12-11 PV-BV 동기화 체크
+#if 0
+			pRly->s32Hv_PvBvDiff = (s32)RackPkt.pv[CPV] - (s32)RackPkt.pv[VPV];
+
+			if (RackPkt.pv[VPV] > 432000 &&pRly->s32Hv_PvBvDiff > -20000L){
+				pRly->bHvRly_DiffErr = FALSE;
+				pRly->u8HvRly_Delay = 0;
+			}else if (Rly_DelayCheck(pRly)){
+				pRly->bHvRly_DiffErr = TRUE;
+			}
+
+			if (pRly->bHvRly_DiffErr == FALSE) {
+				pRly->u8HvRly_Status |= RLY_MPCK_Type;
+				pRly->u8HvRly_M_Status = 4;
+			} else {
+				pRly->u8HvRly_Status &= ~(RLY_MPCK_Type);
+			}break;
+#else
+			pRly->u8HvRly_Status |= MPCK;
+            if (Rly_DelayCheck(pRly) == TRUE){
+                pRly->u8HvRly_M_Status = 4;
+            }break;
+#endif
+        case 4:
+			pRly->u8HvRly_Status &= ~(MPRE);
+			if (Rly_DelayCheck(pRly)) {
+				pRly->u8HvRly_M_Status = HV_STATUS_DONE;
+			}break;
+        default:
+           break;
+    }
+    
+    if (pRly->u8HvRly_M_Status == HV_STATUS_DONE){
+        pRly->bHvRly_MainOnDone = TRUE;
+	}
+}
+
+
+
+void Relay_02_Control(sHvRelayStatus *pRly)
+{
+	GPIO_DOut_MPRE_RLY(		pRly->u8HvRly_Status & (MPRE));
+	GPIO_DOut_MTOP_RLY(		pRly->u8HvRly_Status & (MPCK));
+	GPIO_DOut_MBTM_RLY(		pRly->u8HvRly_Status & (MNCK));
+	GPIO_DOut_BPRE_RLY(		pRly->u8HvRly_Status & (BPRE));
+	GPIO_DOut_BTOP_RLY(		pRly->u8HvRly_Status & (BPCK));
+	GPIO_DOut_BBTM_RLY(		pRly->u8HvRly_Status & (BNCK));
+}
+
+void Relay_03_Feedback(sHvRelayStatus *pRly)
+{
+    u8 fbak = 0;
+    if(GPIO_DIN_MTOP_RLY()	== 1)  {fbak |= MPCK;}
+    if(GPIO_DIN_MBTM_RLY()	== 1)  {fbak |= MNCK;}
+    if(GPIO_DIN_BTOP_RLY()	== 1)  {fbak |= BPCK;}
+    if(GPIO_DIN_BBTM_RLY()	== 1)  {fbak |= BNCK;}
+    
+    pRly->u8HvRly_Feedback = fbak;
+}
+
+
+void Relay_04_Diagnosic(sHvRelayStatus *pRly)
+{
+	static u8 s_chkcnt	= 0;
+	BOOL berrbtms 	= FALSE;
+	BOOL berrmain	= FALSE;
+	u8	 cmd		= (u8)pRly->u8HvRly_Status;                                         																	//KKD 2025-12-11 내가 출력한 명령
+   	u8	 fMainbak	= (u8)pRly->u8HvRly_Feedback;   	  																									//KKD 2025-12-11 실제 릴레이 피드백 입력값
+   	u32	 diff		= cmd ^ fMainbak;                                                   																//KKD 2025-12-11 서로 다른 비트가 1이 됨
+   	
+                                                         																				//KKD 2025-12-11 진단 결과 기본값
+
+   /* 1) 명령과 피드백 불일치 */
+   if (diff != 0U) {
+
+	   if ((cmd & MPCK) == (fMainbak & MPCK)) {                                         																//KKD 2025-12-11  1.1) Main Positive Relay Miss match 
+	   		berrmain = TRUE;
+		   	pRly->eHvRly_ErrStatus = RERR_MPCK;
+	   }
+	   
+	   if ((cmd & MNCK)== (fMainbak & MNCK)) {                                             																//KKD 2025-12-11  1.2) Main Negative Relay Miss match 
+	   		berrmain = TRUE;
+		   	pRly->eHvRly_ErrStatus |= RERR_MNCK;
+	   }
+	   
+	   if ((cmd & BPCK) == (fMainbak & BPCK)) {                                            																//KKD 2025-12-11  1.3) Main Positive Relay Miss match
+	   		berrbtms = TRUE;
+		   	pRly->eHvRly_ErrStatus |= RERR_BPCK;
+	   }
+	   
+	   if ((cmd & BNCK) == (fMainbak & BNCK)) {                                            																//KKD 2025-12-11  1.4) Main Negative Relay Miss match
+	   		berrbtms = TRUE;
+		   	pRly->eHvRly_ErrStatus |= RERR_BNCK;
+	   }
+	}
+/* Todo : 통신 fault시 적용....
+	if()                                                                                																//KKD 2025-12-11 BTMS 통신 에러시
+		pRly->eHvRly_ErrStatus = RERR_COMFAIL
+
+*/	
+	if(berrbtms != 0 || berrmain != 0){
+		if(++s_chkcnt>20){
+			s_chkcnt = 20;
+		}
+	}
+
+#if 0
+   /* 결과가 Fault면 필요 시 릴레이 모두 차단 */
+   if (pRly->eHvRly_ErrStatus != 0) {
+		if(berrbtms == FALSE && berrmain == TRUE){
+			pRly->u8HvRly_Status = 0;	   // 모든 릴레이 OFF
+			pRly->bHvRly_MainOnDone = FALSE;
+		}else if(berrbtms == TRUE){
+			pRly->eHvRly_BtmsCmd = 0;
+			pRly->bHvRly_BtmsOnDone = FALSE;
+		}
+   }
+ #endif
+}
+
+
+void Relay_Proc(void)
+{
+	Relay_01_Status(&g_sRelayStatus);
+	Relay_02_Control(&g_sRelayStatus);
+	Relay_03_Feedback(&g_sRelayStatus);
+	Relay_04_Diagnosic(&g_sRelayStatus);
+}
+
+void Relay_Start_BTMS(void)
+{
+	if(g_sRelayStatus.u8HvRly_B_Status == 0) {
+		g_sRelayStatus.u8HvRly_B_Status = 1;
+		
+		g_sRelayStatus.u8HvRly_Status = 0;
+		g_sRelayStatus.bHvRly_MainOnDone = FALSE;
+	}
+}
+
+void Relay_Stop_BTMS(void)
+{
+	g_sRelayStatus.bHvRly_BtmsOnDone	= FALSE;
+	g_sRelayStatus.bHvRly_MainOnDone 	= FALSE;
+	g_sRelayStatus.u8HvRly_B_Status 	= FALSE;
+	g_sRelayStatus.u8HvRly_Status 			= RLY_IDLE_Type;
+	g_sRelayStatus.u8HvRly_B_Status 	= 0;
+	g_sRelayStatus.u8HvRly_M_Status		= 0;
+}
+
+void Relay_Start_Main(void)
+{
+	if(g_sRelayStatus.u8HvRly_M_Status == 0) {
+		g_sRelayStatus.u8HvRly_M_Status = 1;
+	}
+}
+
+void Relay_Stop_Main(void)
+{
+	g_sRelayStatus.u8HvRly_M_Status 	= 0;
+	g_sRelayStatus.u8HvRly_Status 			&= ~(RLY_MPRE_Type|RLY_MNCK_Type|RLY_MPCK_Type);
+}
+

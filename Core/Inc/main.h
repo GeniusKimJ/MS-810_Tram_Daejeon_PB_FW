@@ -1,0 +1,215 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.h
+  * @brief          : Header for main.c file.
+  *                   This file contains the common defines of the application.
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __MAIN_H
+#define __MAIN_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
+
+/* Exported types ------------------------------------------------------------*/
+/* USER CODE BEGIN ET */
+
+/* USER CODE END ET */
+
+/* Exported constants --------------------------------------------------------*/
+/* USER CODE BEGIN EC */
+
+/* USER CODE END EC */
+
+/* Exported macro ------------------------------------------------------------*/
+/* USER CODE BEGIN EM */
+
+/* USER CODE END EM */
+
+/* Exported functions prototypes ---------------------------------------------*/
+void Error_Handler(void);
+
+/* USER CODE BEGIN EFP */
+
+/* USER CODE END EFP */
+
+/* Private defines -----------------------------------------------------------*/
+#define DOut_BMS_FAULT_Pin GPIO_PIN_2
+#define DOut_BMS_FAULT_GPIO_Port GPIOE
+#define DOut_LED_GRN_Pin GPIO_PIN_3
+#define DOut_LED_GRN_GPIO_Port GPIOE
+#define DOut_LED_RED_Pin GPIO_PIN_4
+#define DOut_LED_RED_GPIO_Port GPIOE
+#define DOut_ON_LED_Pin GPIO_PIN_5
+#define DOut_ON_LED_GPIO_Port GPIOE
+#define DOut_SPI2_AFE2_CS1_Pin GPIO_PIN_14
+#define DOut_SPI2_AFE2_CS1_GPIO_Port GPIOC
+#define DOut_SPI2_AFE2_CS2_Pin GPIO_PIN_15
+#define DOut_SPI2_AFE2_CS2_GPIO_Port GPIOC
+#define RTC_I2C_SDA_Pin GPIO_PIN_0
+#define RTC_I2C_SDA_GPIO_Port GPIOF
+#define RTC_I2C_SCL_Pin GPIO_PIN_1
+#define RTC_I2C_SCL_GPIO_Port GPIOF
+#define DOut_ON_SD_Pin GPIO_PIN_2
+#define DOut_ON_SD_GPIO_Port GPIOF
+#define DOut_EN422_Pin GPIO_PIN_3
+#define DOut_EN422_GPIO_Port GPIOF
+#define DOut_ON_GAS_Pin GPIO_PIN_5
+#define DOut_ON_GAS_GPIO_Port GPIOF
+#define DOut_ON_CAB_Pin GPIO_PIN_6
+#define DOut_ON_CAB_GPIO_Port GPIOF
+#define DOut_ON_IMD_Pin GPIO_PIN_7
+#define DOut_ON_IMD_GPIO_Port GPIOF
+#define DOut_ON_MVB_Pin GPIO_PIN_8
+#define DOut_ON_MVB_GPIO_Port GPIOF
+#define DOut_TP3_Pin GPIO_PIN_10
+#define DOut_TP3_GPIO_Port GPIOF
+#define ADIN10_BTMS_PIL_Pin GPIO_PIN_0
+#define ADIN10_BTMS_PIL_GPIO_Port GPIOC
+#define ADIN11_BTMS_PIH_Pin GPIO_PIN_1
+#define ADIN11_BTMS_PIH_GPIO_Port GPIOC
+#define SPI2_AFE2_SDO_Pin GPIO_PIN_2
+#define SPI2_AFE2_SDO_GPIO_Port GPIOC
+#define SPI2_AFE2_MDO_Pin GPIO_PIN_3
+#define SPI2_AFE2_MDO_GPIO_Port GPIOC
+#define ADIN0_24V_Pin GPIO_PIN_0
+#define ADIN0_24V_GPIO_Port GPIOA
+#define ADIN1_13V_Pin GPIO_PIN_1
+#define ADIN1_13V_GPIO_Port GPIOA
+#define ADIN2_5V_Pin GPIO_PIN_2
+#define ADIN2_5V_GPIO_Port GPIOA
+#define ADIN4_CPV_Pin GPIO_PIN_4
+#define ADIN4_CPV_GPIO_Port GPIOA
+#define ADIN5_VPV_Pin GPIO_PIN_5
+#define ADIN5_VPV_GPIO_Port GPIOA
+#define ADIN6_TVPV_Pin GPIO_PIN_6
+#define ADIN6_TVPV_GPIO_Port GPIOA
+#define DOut_TP1_Pin GPIO_PIN_7
+#define DOut_TP1_GPIO_Port GPIOA
+#define _IN_ISO_PWM_Pin GPIO_PIN_5
+#define _IN_ISO_PWM_GPIO_Port GPIOC
+#define B_FAN_Pin GPIO_PIN_0
+#define B_FAN_GPIO_Port GPIOB
+#define S_FAN_Pin GPIO_PIN_1
+#define S_FAN_GPIO_Port GPIOB
+#define DOut_LED_VITAL_Pin GPIO_PIN_12
+#define DOut_LED_VITAL_GPIO_Port GPIOF
+#define DOut_LED_FAULT_Pin GPIO_PIN_13
+#define DOut_LED_FAULT_GPIO_Port GPIOF
+#define DOut_LED_CHG_Pin GPIO_PIN_14
+#define DOut_LED_CHG_GPIO_Port GPIOF
+#define DOut_LED_DCH_Pin GPIO_PIN_15
+#define DOut_LED_DCH_GPIO_Port GPIOF
+#define DOut_MAIN_RLY_P_Pin GPIO_PIN_7
+#define DOut_MAIN_RLY_P_GPIO_Port GPIOE
+#define DOut_MAIN_RLY_N_Pin GPIO_PIN_8
+#define DOut_MAIN_RLY_N_GPIO_Port GPIOE
+#define DOut_MAIN_RLY_PPRE_Pin GPIO_PIN_9
+#define DOut_MAIN_RLY_PPRE_GPIO_Port GPIOE
+#define DOut_BTM_RLY_PPRE_Pin GPIO_PIN_10
+#define DOut_BTM_RLY_PPRE_GPIO_Port GPIOE
+#define DOut_BTM_RLY_P_Pin GPIO_PIN_11
+#define DOut_BTM_RLY_P_GPIO_Port GPIOE
+#define DOut_BTM_RLY_N_Pin GPIO_PIN_12
+#define DOut_BTM_RLY_N_GPIO_Port GPIOE
+#define _IN_IDSEG0_Pin GPIO_PIN_14
+#define _IN_IDSEG0_GPIO_Port GPIOE
+#define _IN_IDSEG1_Pin GPIO_PIN_15
+#define _IN_IDSEG1_GPIO_Port GPIOE
+#define SPI2_AFE2_SCK_Pin GPIO_PIN_10
+#define SPI2_AFE2_SCK_GPIO_Port GPIOB
+#define RS485_RX_BTMS_Pin GPIO_PIN_11
+#define RS485_RX_BTMS_GPIO_Port GPIOB
+#define EN485_Pin GPIO_PIN_14
+#define EN485_GPIO_Port GPIOB
+#define DOut_TP2_Pin GPIO_PIN_15
+#define DOut_TP2_GPIO_Port GPIOB
+#define RS485_TX_BTMS_Pin GPIO_PIN_8
+#define RS485_TX_BTMS_GPIO_Port GPIOD
+#define _CH_ON_Pin GPIO_PIN_9
+#define _CH_ON_GPIO_Port GPIOD
+#define _HV_BAT_ON_Pin GPIO_PIN_10
+#define _HV_BAT_ON_GPIO_Port GPIOD
+#define LHD_OPEN_Pin GPIO_PIN_12
+#define LHD_OPEN_GPIO_Port GPIOD
+#define LHD_SHORT_Pin GPIO_PIN_13
+#define LHD_SHORT_GPIO_Port GPIOD
+#define _IN_MAIN_TOP_FUSE_Pin GPIO_PIN_2
+#define _IN_MAIN_TOP_FUSE_GPIO_Port GPIOG
+#define _IN_MAIN_BTM_FUSE_Pin GPIO_PIN_3
+#define _IN_MAIN_BTM_FUSE_GPIO_Port GPIOG
+#define _IN_MAIN_RLY_P_Pin GPIO_PIN_4
+#define _IN_MAIN_RLY_P_GPIO_Port GPIOG
+#define _IN_MAIN_RLY_N_Pin GPIO_PIN_5
+#define _IN_MAIN_RLY_N_GPIO_Port GPIOG
+#define _IN_BTM_FUSE_N_Pin GPIO_PIN_6
+#define _IN_BTM_FUSE_N_GPIO_Port GPIOG
+#define _IN_BTM_RLY_P_Pin GPIO_PIN_7
+#define _IN_BTM_RLY_P_GPIO_Port GPIOG
+#define _IN_BTM_RLY_N_Pin GPIO_PIN_8
+#define _IN_BTM_RLY_N_GPIO_Port GPIOG
+#define TIM_ISO_PWM1_Pin GPIO_PIN_6
+#define TIM_ISO_PWM1_GPIO_Port GPIOC
+#define DOut_ONSDCD_Pin GPIO_PIN_7
+#define DOut_ONSDCD_GPIO_Port GPIOC
+#define TIM_ISO_PWM2_Pin GPIO_PIN_15
+#define TIM_ISO_PWM2_GPIO_Port GPIOA
+#define DOut_PWM_RLY_Pin GPIO_PIN_0
+#define DOut_PWM_RLY_GPIO_Port GPIOD
+#define RS422_TX_MVB_Pin GPIO_PIN_5
+#define RS422_TX_MVB_GPIO_Port GPIOD
+#define RS422_RX_MVB_Pin GPIO_PIN_6
+#define RS422_RX_MVB_GPIO_Port GPIOD
+#define DOut_TP4_Pin GPIO_PIN_14
+#define DOut_TP4_GPIO_Port GPIOG
+#define SPI1_AFE1_SCK_Pin GPIO_PIN_3
+#define SPI1_AFE1_SCK_GPIO_Port GPIOB
+#define SPI1_AFE1_SDO_Pin GPIO_PIN_4
+#define SPI1_AFE1_SDO_GPIO_Port GPIOB
+#define SPI1_AFE1_MDO_Pin GPIO_PIN_5
+#define SPI1_AFE1_MDO_GPIO_Port GPIOB
+#define MSCL_Pin GPIO_PIN_6
+#define MSCL_GPIO_Port GPIOB
+#define MSDA_Pin GPIO_PIN_7
+#define MSDA_GPIO_Port GPIOB
+#define DOut_EEP_EVENT_WP1_Pin GPIO_PIN_8
+#define DOut_EEP_EVENT_WP1_GPIO_Port GPIOB
+#define DOut_EEP_BOOT_WP2_Pin GPIO_PIN_9
+#define DOut_EEP_BOOT_WP2_GPIO_Port GPIOB
+#define DOut_SPI1_AFE1_CS1_Pin GPIO_PIN_0
+#define DOut_SPI1_AFE1_CS1_GPIO_Port GPIOE
+#define DOut_SPI1_AFE1_CS2_Pin GPIO_PIN_1
+#define DOut_SPI1_AFE1_CS2_GPIO_Port GPIOE
+
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __MAIN_H */

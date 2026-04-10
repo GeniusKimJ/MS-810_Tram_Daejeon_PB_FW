@@ -1,0 +1,149 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_can.h
+\author             KKD
+\date               2025-11-21 
+\brief              CAN을 위한 헤더.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_CAN_H__
+#define __MS_CAN_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+#include <ms_Util.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define FIFO_CAN_MAX				(300)
+#define FIFO_CAN_TX_FAIL_LOG_MAX	(100)
+
+#define CAN_DATA_SIZE               8
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+#pragma pack(push,1)
+typedef enum{
+	Can_Standard_Type				= 0,
+	Can_Extended_Type,
+	Max_Can_type
+}Enum_Can_Type;
+
+typedef enum{
+	McuCan_Ext_Type					= 0,
+	McuCan_Int_Type,
+	Max_McuCan_Type
+}Enum_McuCan_Type;	
+
+typedef enum{
+	SenIC_HALL_Type						= 0,
+	SenIC_GAS_Type,
+	SenIC_IMD_Type,
+	Max_SenIC_Type
+}Enum_Sencing_IC_Type;
+
+#pragma pack(1)
+typedef struct{
+    CAN_TxHeaderTypeDef TxHeader;
+	u8 u8Data[CAN_DATA_SIZE];
+}sCanData;
+
+typedef struct{
+	sCanData stCanData[FIFO_CAN_MAX];
+#ifdef CAN_BUF_UPATE    //2025-11-27   jkpark  Can Buffer 관련 수정.
+	BufferInfoType bufInfo;
+#else
+	u32 u32InputPos;
+	u32 u32OutPos;
+	u32 u32Remain;
+
+	u32 u32MaxRemain;
+#endif //CAN_BUF_UPATE
+    
+	u32 u32RemainZeroCount;
+
+	BOOL bTxDone;
+	u8 u8CanTxOkFalseCount;
+
+	u32 u32AbortCount[3];
+	u32 u32TxErrorCount;
+}sFifo;
+
+#ifdef CAN_BUF_UPATE    //2025-12-02   jkpark  Can Buffer 관련 수정.
+typedef struct{
+    CAN_RxHeaderTypeDef RxHeader;
+	u8 u8Data[CAN_DATA_SIZE];
+}sCanRxData;
+
+typedef struct{
+	sCanRxData stCanRxData[FIFO_CAN_MAX];
+    BufferInfoType bufInfo;
+}sRxFifoType;
+#endif //CAN_BUF_UPATE
+
+
+typedef struct{
+    CAN_TxHeaderTypeDef TxFaultLog_Header[FIFO_CAN_TX_FAIL_LOG_MAX];
+	u32 TxFaultLog_TimeMs[FIFO_CAN_TX_FAIL_LOG_MAX];
+	u32 u32StartPos;
+	u32 u32EndPos;
+	u32 u32Count;
+}sCanTxFailLog;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern u8 g_u8SenIcRxData[Max_SenIC_Type][8];
+extern BOOL g_bSenIcRxDone[Max_SenIC_Type];
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+
+//fifo
+void	Can_Fifo_In(CAN_TxHeaderTypeDef* pTxHeader, u8 u8CanData[], Enum_McuCan_Type eMcuCan);
+BOOL	Can_Fifo_Out(CAN_TxHeaderTypeDef* pTxHeader, u8 u8CanData[], Enum_McuCan_Type eMcuCan);
+
+u32 	Can_Fifo_GetRemainCount(Enum_McuCan_Type eMcuCan);
+u32 	Can_Fifo_GetMaxRemainCount(Enum_McuCan_Type eMcuCan);
+u32 	Can_Fifo_GetRemainZeroCount(Enum_McuCan_Type eMcuCan);
+
+void 	Can_Fifo_TxCheck_In(CAN_TxHeaderTypeDef* pTxHeader, u8 u8CanData[], Enum_McuCan_Type eMcuCan);
+
+BOOL	 Can_Fifo_TxCheck_TxOkFalseCount(Enum_McuCan_Type eMcuCan);
+
+void 	Can_Fifo_TxCheck_SetTxDone(Enum_McuCan_Type eMcuCan);
+BOOL 	Can_Fifo_TxCheck_GetTxDone(Enum_McuCan_Type eMcuCan);
+void 	Can_Fifo_TxCheck_SetTxReady(Enum_McuCan_Type eMcuCan);
+
+BOOL 	Can_Fifo_TxCheck_GetLastTx(sCanData* pstLastData, Enum_McuCan_Type eMcuCan);
+
+void 	Can_Fifo_WriteLog_TxFail(CAN_TxHeaderTypeDef* BeforeTxHeader, sCanTxFailLog* pstCanTxFailLog);
+u32 	Can_Fifo_Get_MaxFifoCount(Enum_McuCan_Type eMcuCan);
+void 	Can_Fifo_TxCheck_CheckAbortMsg(u8 u8TxMailBoxPos, sCanData* pstLastTxCanData, Enum_McuCan_Type eMcuCan);
+void 	Can_Fifo_TxCheck_CheckErrorMsg(sCanData* pstLastTxCanData, Enum_McuCan_Type eMcuCan);
+u32 	Can_Fifo_TxCheck_GetErrorCount(Enum_McuCan_Type eMcuCan);
+//. . .  fifo
+
+
+//can
+void 	Can_Init(void);
+
+void 	Can_MakeConfigFilter(void);
+void 	Can_SetupInterrupt(void);
+
+void 	Can_TxFifo(Enum_Can_Type eCanType, u32 u32CanId, u8 u8CanData[], Enum_McuCan_Type eMcuCan);
+void 	Can_TxProc(Enum_McuCan_Type eMcuCanType);
+#ifdef CAN_BUF_UPATE    //2025-12-02   jkpark  Can Buffer 관련 수정.
+void    Can_RxProc( void );
+#endif //CAN_BUF_UPATE
+
+
+void Can_Tx_Test(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos);
+
+//. . . can
+#endif // __MS_CAN_H__

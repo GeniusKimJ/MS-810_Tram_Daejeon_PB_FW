@@ -1,0 +1,95 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(bms process(V/C/T Cal or Calibration))                                           			  *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                               		   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_process.c
+\author             KKD
+\date               2025-11-24 
+\brief              bms process(V/C/T Cal or Calibration)
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_process.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+void Proc_Calcul_CV(Pkt_Rack *psRackPkt, sAdbms6815 *psAdbms6815)
+{
+	s16	max = 0, min = 0;
+	u8	cnt 	= 0;
+	u8	min_num	= 0;
+	u8	max_num	= 0;
+	s32	avgth	= 0;
+	u32	avgsum	= 0;
+	u32	u32_buf	= 0;
+
+	/* */
+    memcpy(&psRackPkt->TrayPkt[0].cell[0],psAdbms6815->u16Cv,sizeof(psAdbms6815->u16Cv));
+
+	for(u8 i=0;i<NCV;i++){
+		psRackPkt->TrayPkt[0].cell[i];
+	}
+
+	avgth = 0;
+	max = (s16)-32768;
+	min = (s16)32767;
+	for(cnt = 0; cnt < (NTH); cnt++) {
+		if(psRackPkt->TrayPkt[0].temp[cnt] > max) {
+			max = psRackPkt->TrayPkt[0].temp[cnt];
+			max_num = cnt;
+		}
+		if(psRackPkt->TrayPkt[0].temp[cnt] < min) {
+			min = psRackPkt->TrayPkt[0].temp[cnt];
+			min_num = cnt;
+		}
+		avgth += psRackPkt->TrayPkt[0].temp[cnt];
+	}
+	psRackPkt->maxth	= max;
+	psRackPkt->maxth	= (u8)(max_num+1U);
+	psRackPkt->minth	= min;
+	psRackPkt->minth	= (u8)(min_num+1U);
+	//psRackPkt->avgth  = (s16)avgth/(s16)(MAXNTH-2U);
+	psRackPkt->avgth 	= (s16)avgth/(s16)(NTH);
+	psRackPkt->diffth	= max-min;
+	
+	avgsum	= 0;
+	max		= 0;
+	min		= 32767;
+	for(cnt = 0; cnt < NCV; cnt++) {
+		if(RackPkt.TrayPkt[0].cell[cnt] > (u32)max) {
+			max = (s16)RackPkt.TrayPkt[0].cell[cnt];
+			max_num = cnt;
+		}
+		if(RackPkt.TrayPkt[0].cell[cnt] < (u32)min) {
+			min = (s16)RackPkt.TrayPkt[0].cell[cnt];
+			min_num = cnt;
+		}
+		avgsum += RackPkt.TrayPkt[0].cell[cnt];
+	}
+	RackPkt.maxcv	= (u16)max;
+	RackPkt.maxcvn	= max_num+1U;
+	RackPkt.mincv	= (u16)min;
+	RackPkt.mincvn	= min_num+1U;
+	RackPkt.sumcv	= avgsum;
+	RackPkt.pv[PVINP]= RackPkt.sumcv;
+	
+	u32_buf			= avgsum/(u32)(NCV);
+	RackPkt.avgcv	= (u16)(u32_buf);
+	RackPkt.diffcv	= max-min;
+}
+
+
+

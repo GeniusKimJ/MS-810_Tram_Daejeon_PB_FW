@@ -1,0 +1,12 @@
+../User_Src/ms_Util.c:284:16:Util_detect_order	4	static
+../User_Src/ms_Util.c:300:12:Util_lower_bound_ex	8	static
+../User_Src/ms_Util.c:335:12:Util_upper_bound_ex	8	static
+../User_Src/ms_Util.c:27:12:Util_Buffer_Init	0	static
+../User_Src/ms_Util.c:102:12:Util_Buffer_Read	40	static,ignoring_inline_asm
+../User_Src/ms_Util.c:170:12:Util_Buffer_Check	0	static
+../User_Src/ms_Util.c:45:12:Util_Buffer_Write	48	static,ignoring_inline_asm
+../User_Src/ms_Util.c:187:7:Util_memcpy_s	0	static
+../User_Src/ms_Util.c:201:7:Util_memset	0	static
+../User_Src/ms_Util.c:215:5:Util_UpdateFCS	528	static
+../User_Src/ms_Util.c:275:5:Util_UpdateChecksum	0	static
+../User_Src/ms_Util.c:373:12:Util_GetBinaryRange	32	static

@@ -1,0 +1,97 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Gas sensor)                                           			  *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                               		   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               GAS_sgxbld1.h
+\author             KKD
+\date               2025-11-24 
+\brief              Gas sensor
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __GAS_SGXBLD1_H__
+#define __GAS_SGXBLD1_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define GAS_CAN_ID              (0x256)
+#define GAS_TIMEOUT_MS          (500)      		// safety timing
+#define GAS_ROLL_MAX            (15)
+#define GAS_FACTOR_TEMP         (float)(1.0f)
+#define GAS_OFFSET_TEMP         (float)(-55.0f)
+#define GAS_FACTOR_H2           (float)(0.01f)
+#define GAS_FACTOR_VOLTAGE      (float)(0.1f)
+#define GAS_FACTOR_HUMIDITY		(float)(0.5f)
+#define GAS_SEQ_STUCK_TH		(5)
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum{
+	GErr_Ovp_Type 			= 0,
+	GErr_RHIssue_Type,
+	GErr_TCIssue_Type,
+	GErr_H2OutRange_Type,
+	GErr_TempIssue_Type,
+	GErr_Uvp_Type,
+	GErr_SensorReplace_Type,
+	GErr_CanRxTimeout_Type,
+	GErr_RollCountTimeout_Type,
+	Max_GasErr_Type
+}eGas_Err_Type;
+
+
+#pragma pack(push,1)
+typedef struct {
+	eGas_Err_Type eGasErr;
+	BOOL bOvp; 	
+	BOOL bTCIssue; 	
+	BOOL bRHIssue; 	
+	BOOL bH2OutRange; 	
+	BOOL bTempIssue; 		
+	BOOL bUvp; 	
+	BOOL bSensorRepl; 
+    BOOL bComTimout;        						// 0.5s 미응답
+
+    
+    u8  u8Temp;              						// °C (offset -55)
+    u16	u16H2;                						// Hydrogen % x100
+    u8  u8Voltage;            						// 0.1V 단위
+    u8  u8Humidity;           						// 0.5% 단위
+    u8  u8RollCnt;            						// 0~15
+	u8	u8RollStuckCnt;
+
+	
+    float fTempC;
+    float fH2Percent;         						// %
+    float fVoltageV;          						// V
+    float fHumiPerc;   						// %
+
+    u16 u16ErrStatus;
+} sGasData;
+
+extern sGasData g_sGasData;
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+void	GAS_Init(void);
+void	GAS_CanRxParsing(sGasData *psGasData ,u8 *pu8CanRxData);
+void	GAS_TimeoutCheck(sGasData *psGasData);
+BOOL	GAS_Proc(void);
+
+u16		GAS_GetErrStatus(void);
+u8		GAS_GetTemperature(void);
+u16		GAS_GetHydrogenPercent(void);
+u8		GAS_GetVoltage(void);
+u8		GAS_GetHumidity(void);
+u8		GAS_GetRollCounter(void);
+
+
+
+#endif //__GAS_SGXBLD1_H__

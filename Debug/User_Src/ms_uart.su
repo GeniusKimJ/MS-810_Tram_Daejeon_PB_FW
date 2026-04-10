@@ -1,0 +1,4 @@
+../User_Src/ms_uart.c:42:6:HAL_UART_RxCpltCallback	0	static
+../User_Src/ms_uart.c:52:6:HAL_UART_TxCpltCallback	0	static
+../User_Src/ms_uart.c:70:6:Uart_GetRx1DmatoUartBuf	16	static
+../User_Src/ms_uart.c:122:4:Uart_ChkUartRx1Dma	20	static

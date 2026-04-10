@@ -1,0 +1,32 @@
+#ifndef MS_MAIN_H
+#define MS_MAIN_H
+
+
+/* include */
+#include "string.h"
+#include "stdlib.h"
+#include "stdint.h"
+#include "main.h"
+#include "adc.h"
+#include "can.h"
+#include "i2c.h"
+#include "tim.h"
+#include "usart.h"
+#include "gpio.h"
+#include "spi.h"
+
+
+/* define */
+
+
+
+
+/* func */
+void MS_main(void);
+
+
+
+
+
+
+#endif

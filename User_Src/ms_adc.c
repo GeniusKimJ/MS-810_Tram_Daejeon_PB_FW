@@ -1,0 +1,412 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_adc.c
+\author             KKD
+\date               2025-11-21 
+\brief              ADC를 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_adc.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+sAdcData g_sAdcData;
+sAdcGain g_sAdcGain;
+                                                               //jkpark 2026-01-05 8개를 누적하기 위해 9개의 버퍼가 필요함.
+
+u16 g_u16Adc1[ ADC1_CH_NUM ] = {0};                                                    //jkpark 2026-01-16 12Bit이므로 u16으로 설정해야함.
+u16 g_u16Adc2[ ADC2_CH_NUM ] = {0};                                                    //jkpark 2026-01-16 12Bit이므로 u16으로 설정해야함.
+u16 g_u16Adc3[ ADC3_CH_NUM ] = {0};                                                    //jkpark 2026-01-16 12Bit이므로 u16으로 설정해야함.
+
+u32 g_u32Adc1_Buf[ ADC1_CH_NUM ][ ADC_BUF_SIZE ] = {0,};
+u32 g_u32Adc2_Buf[ ADC2_CH_NUM ][ ADC_BUF_SIZE ] = {0,};
+u32 g_u32Adc3_Buf[ ADC3_CH_NUM ][ ADC_BUF_SIZE ] = {0,};
+u32 g_u32Adc1_index;
+u32 g_u32Adc2_index;
+u32 g_u32Adc3_index;
+
+u32 g_u32AdcSum[ ID_ADC__NUM_MAX ] = {0,};
+
+//float v13_mV  = ad15 * CONST_AUX13_15BIT;
+//float v24_mV  = ad15 * CONST_AUX24_15BIT;
+//float v5_mV   = ad15 * CONST_AUX5_15BIT;
+//float v33_mV  = ad15 * CONST_AUX33_15BIT;
+
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+/*********************************************************************************/
+//3   Function Name  : ADC_InitAll
+/*----------------------------------------------------------------------------*//**
+\fn        ADC_InitAll
+\brief     ADC DMA를 시작.
+\parm      -
+\return    -
+\warning   -
+*//*******************************************************************************/
+void ADC_InitAll( void )
+{
+    HAL_ADC_Start_DMA(&hadc1, (u32*)g_u16Adc1, (u32)ADC1_CH_NUM);
+    HAL_ADC_Start_DMA(&hadc2, (u32*)g_u16Adc2, (u32)ADC2_CH_NUM);
+    HAL_ADC_Start_DMA(&hadc3, (u32*)g_u16Adc3, (u32)ADC3_CH_NUM);
+
+    //HAL_ADC_Start_DMA( &hadc1, (u32)g_u16Adc1, (u32)ADC1_CH_NUM);
+    //HAL_ADC_Start_DMA( &hadc2, (u32)g_u16Adc2, (u32)ADC2_CH_NUM);
+    //HAL_ADC_Start_DMA( &hadc3, (u32)g_u16Adc3, (u32)ADC3_CH_NUM);
+}
+
+/*********************************************************************************/
+//3   Function Name  : ADC_GetStmAdc15bit
+/*----------------------------------------------------------------------------*//**
+\fn        ADC_GetStmAdc15bit
+\brief     DMA로 누적한 값을 평균하고 보정한 값을 돌려주는 함수.
+\parm      adcID: 읽을 ADC 채널 이름.
+\return    계산값.
+\warning   DMA로 읽어들이는 값.
+*//*******************************************************************************/
+#if 0
+
+s32 ADC_GetStmAdc15bit( AdcIDType adcID )
+{
+ //jkpark 2026-01-19 ADC Calibration 적용.
+    u32 VDD_mV;
+
+    if( g_u32AdcSum[ ID_ADC1_VREFINT ] != 0u ){
+	    VDD_mV = (u32)VREFINT_CAL_VREF
+	           * (u32)(*VREFINT_CAL_ADDR)
+				   / (u32)( ( g_u32AdcSum[ ID_ADC1_VREFINT ] / ADC_AVG_COUNT ) >> 3 );
+    }else{
+    	VDD_mV = VREFINT_CAL_VREF;
+    }
+
+    u32 avg	= (u32)(g_u32AdcSum[adcID] / (u32)ADC_AVG_COUNT);
+    u32 scale = (u32)(VDD_mV /(u32)VREFINT_CAL_VREF);
+    u32 res	= (u32)(avg * scale);
+
+    return (s32)res;   /* <-- 명시적 변환 */
+}
+#else
+ s32 ADC_GetStmAdc15bit( AdcIDType adcID )
+ {
+#if 1
+  //jkpark 2026-01-19 ADC Calibration 적용.
+	 u32 VDD_mV;
+	 if( g_u32AdcSum[ ID_ADC1_VREFINT ] != 0 )
+	 {
+		 VDD_mV = (u32)VREFINT_CAL_VREF
+				* (u32)(*VREFINT_CAL_ADDR)
+					/ (u32)( ( g_u32AdcSum[ ID_ADC1_VREFINT ] / ADC_AVG_COUNT ) >> 3 );
+	 }else
+	 {
+		 VDD_mV = VREFINT_CAL_VREF;
+	 }
+ 
+	 return ( g_u32AdcSum[ adcID ] / ADC_AVG_COUNT ) * VDD_mV / VREFINT_CAL_VREF;
+#else
+	 return ( g_u32AdcSum[ adcID ] / ADC_AVG_COUNT );
+#endif
+ }
+#endif
+
+
+#if 0                                                                                   //jkpark 2026-01-15 DMA를 사용.
+ //jkpark 2026-01-19 Polling 방식 ADC
+void ADC_UpdateStmAdc15bit( void ){
+//	ADC_ChannelConfTypeDef AdCfg = {0U};
+	u16 n;
+
+//	AdCfg.Channel		= ch;
+//	AdCfg.Rank 			= rank;
+//  AdCfg.SamplingTime	= ADC_SAMPLETIME_3CYCLES;
+
+//	HAL_ADC_ConfigChannel(&hadc1, &AdCfg);                                            																	//jkpark 2025-12-30 설정 하려면 전체를 해야함. 
+    memset( g_u32AdcSum, 0x00, sizeof( g_u32AdcSum ));
+
+	for(n = 0; n < 8U; n++)	{                                                        																	//jkpark 2025-12-30 12Bit ADC를 누적하여 15Bit로 사용.
+       	HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC1_CH00 ] += (s32)HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC1_CH01 ] += (s32)HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC1_CH02 ] += (s32)HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC1_CH03 ] += (s32)HAL_ADC_GetValue(&hadc1);
+    	HAL_ADC_Stop(&hadc1);
+
+       	HAL_ADC_Start(&hadc2);
+		HAL_ADC_PollForConversion(&hadc2, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC2_CH04 ] += (s32)HAL_ADC_GetValue(&hadc2);
+		HAL_ADC_PollForConversion(&hadc2, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC2_CH05 ] += (s32)HAL_ADC_GetValue(&hadc2);
+		HAL_ADC_PollForConversion(&hadc2, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC2_CH06 ] += (s32)HAL_ADC_GetValue(&hadc2);
+    	HAL_ADC_Stop(&hadc2);
+
+       	HAL_ADC_Start(&hadc3);
+		HAL_ADC_PollForConversion(&hadc3, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC3_CH10 ] += (s32)HAL_ADC_GetValue(&hadc3);
+		HAL_ADC_PollForConversion(&hadc3, 100);					/*  max 22.2us */
+        g_u32AdcSum[ ID_ADC3_CH11 ] += (s32)HAL_ADC_GetValue(&hadc3);
+    	HAL_ADC_Stop(&hadc3);
+	}
+    return;
+}
+#endif
+
+// PC0 - hallsensor c
+void ADC1_Ch10_GetPIL(void) {
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN10_PIL );
+	double d64_buf[1] = {0};
+
+	///RackPkt.aux = fstmadc * CONST2R5;
+	d64_buf[0] = d64_adc*CONST_AUX24_15BIT;
+	g_sAdcData.s124_low = (u16)d64_buf[0];
+}
+
+void ADC1_Ch11_GetPIH(void) {
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN11_PIH );
+	double d64_buf[1] = {0};
+
+	///RackPkt.aux = fstmadc * CONST2R5;
+	d64_buf[0] = d64_adc*CONST_AUX24_15BIT;
+	g_sAdcData.s124_high = (u16)d64_buf[0];
+}
+
+
+// PA0 -24V	
+void ADC1_Ch0_GetAd24V(void) {
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN0_24V );
+	double d64_buf[1] = {0};
+
+	///RackPkt.aux = fstmadc * CONST2R5;
+	d64_buf[0] = d64_adc*CONST_AUX24_15BIT;
+	g_sAdcData.supp24v = (u16)d64_buf[0];
+}
+
+// PA1 - 13V
+void ADC1_Ch1_GetAd13V(void) {
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN1_13V );
+	double d64_buf[1] = {0};
+
+	///RackPkt.aux = fstmadc * CONST2R5;
+	d64_buf[0] = d64_adc*CONST_AUX13_15BIT;
+	g_sAdcData.supp13v = (u16)d64_buf[0];
+}
+
+// PA2 - 5V
+void ADC1_Ch2_GetAd5V0(void) {
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN2_5V );
+	double d64_buf[1] = {0};
+
+	///RackPkt.aux = fstmadc * CONST2R5;
+	d64_buf[0] = d64_adc*CONST_AUX5_15BIT;
+	g_sAdcData.supp5v0 = (u16)d64_buf[0];
+}
+// PA3 - 3.3V
+void ADC1_Ch3_GetAd3V3(void) {
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN3_3V3 );
+	double d64_buf[1] = {0};
+
+	///RackPkt.aux = fstmadc * CONST2R5;
+	d64_buf[0] = d64_adc*CONST_AUX33_15BIT;
+	g_sAdcData.supp3v3 = (u16)d64_buf[0];
+}
+
+// PA3 -CPV	
+void ADC2_Ch0_GetCPV(void) {
+	double d64_adc = 0;
+	double d64_buf = 0;
+	double d64_res = 0;
+
+	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN4_CPV );
+	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,g_sAdcGain.gain_pv_in);	
+	d64_res = d64_buf * (double)0.01f;
+	g_sAdcData.cpv = (u16)d64_res;
+	g_sAdcData.cpvAdc = (u16)d64_adc;
+}
+
+// PA4 - VPV
+void ADC2_Ch1_GetAVPV(void) {
+	double d64_adc = 0;
+	double d64_buf = 0;
+	double d64_res = 0;
+
+	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN5_VPV );
+	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,g_sAdcGain.gain_pv_ou);
+	d64_res = d64_buf * (double)0.01f;
+	g_sAdcData.vpv = (u16)d64_res;
+	g_sAdcData.vpvAdc = (u16)d64_adc;
+}
+
+// PA5 - BTMS VPV
+void ADC2_Ch2_GetBtmsVPV(void) {
+	double d64_adc = 0;
+	double d64_buf = 0;
+	double d64_res = 0;
+
+	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN6_TVPV );
+	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,g_sAdcGain.gain_pv_bt);
+	d64_res = d64_buf * (double)0.01f;
+	g_sAdcData.tvpv = (u16)d64_res;
+	g_sAdcData.tvpvAdc = (u16)d64_adc;
+}
+
+//void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    u8 i = 0;
+#if 1    
+    if( hadc->Instance == ADC1 ){
+        for ( i = 0; i < ADC1_CH_NUM; i++){
+            g_u32Adc1_Buf[i][ g_u32Adc1_index ] = g_u16Adc1[i];
+            g_u32AdcSum[ (u8)ID_ADC1_CH00 + i ] += g_u32Adc1_Buf[i][ g_u32Adc1_index ];
+        }
+
+        g_u32Adc1_index++;
+        if( g_u32Adc1_index >= (u32)ADC_BUF_SIZE ) {g_u32Adc1_index = 0UL;}
+
+        for ( i = 0; i < ADC1_CH_NUM; i++) {
+            g_u32AdcSum[ (u8)ID_ADC1_CH00 + i ] -= g_u32Adc1_Buf[i][ g_u32Adc1_index ];
+        }
+    }else if( hadc->Instance == ADC2 ){
+        for ( i = 0; i < ADC2_CH_NUM; i++){
+            g_u32Adc2_Buf[i][ g_u32Adc2_index ] = g_u16Adc2[i];
+            g_u32AdcSum[ (u8)ID_ADC2_CH04 + i ] += g_u32Adc2_Buf[i][ g_u32Adc2_index ];
+        }
+        
+        g_u32Adc2_index++;
+        if( g_u32Adc2_index >= (u32)ADC_BUF_SIZE )
+        {
+          g_u32Adc2_index = 0UL;
+        }
+        
+        for ( i = 0; i < (u32)ADC2_CH_NUM; i++){
+            g_u32AdcSum[ (u32)ID_ADC2_CH04 + i ] -= g_u32Adc2_Buf[i][ g_u32Adc2_index ];
+        }
+    }else if( hadc->Instance == ADC3 ){
+        for ( i = 0; i < ADC3_CH_NUM; i++){
+            g_u32Adc3_Buf[i][ g_u32Adc3_index ] = g_u16Adc3[i];
+            g_u32AdcSum[ (u32)ID_ADC3_CH10 + i ] += g_u32Adc3_Buf[i][ g_u32Adc3_index ];
+        }
+
+        g_u32Adc3_index++;
+        if( g_u32Adc3_index >= ADC_BUF_SIZE ) {g_u32Adc3_index = 0UL;}
+
+        for ( i = 0; i < ADC3_CH_NUM; i++){
+            g_u32AdcSum[ (u8)ID_ADC3_CH10 + i ] -= g_u32Adc3_Buf[i][ g_u32Adc3_index ];
+        }
+    }
+#else    
+
+    s16     *ptr_g_Adc_Buf[][ADC_BUF_SIZE] = NULL;
+    s16     *ptr_g_Adc_index = NULL;
+    s16     *ptr_Adc[] = NULL;
+    s16     bufIndex = 0;
+    s16     adcChNum = 0;
+
+    if( hadc->Instance != ADC1 )
+    {
+        for ( i = 0; i < ADC1_CH_NUM; i++)
+        {
+            g_s16Adc1_Buf[i][ g_s16Adc1_index ] = g_s16Adc1[i];
+            g_u32AdcSum[ ID_ADC1_CH00 + i ] += g_s16Adc1_Buf[i][ g_s16Adc1_index++ ];
+            if( g_s16Adc1_index >= ADC_BUF_SIZE ) g_s16Adc1_index = 0;
+            g_u32AdcSum[ ID_ADC1_CH00 + i ] -= g_s16Adc1_Buf[i][ g_s16Adc1_index   ];
+        }
+    }
+    else if( hadc->Instance != ADC2 )
+    {
+        for ( i = 0; i < ADC2_CH_NUM; i++)
+        {
+            g_s16Adc2_Buf[i][ g_s16Adc2_index ] = g_s16Adc2[i];
+            g_u32AdcSum[ ID_ADC2_CH04 + i ] += g_s16Adc2_Buf[i][ g_s16Adc2_index++ ];
+            if( g_s16Adc1_index >= ADC_BUF_SIZE ) g_s16Adc1_index = 0;
+            g_u32AdcSum[ ID_ADC2_CH04 + i ] -= g_s16Adc1_Buf[i][ g_s16Adc1_index   ];
+        }
+    }
+    else if( hadc->Instance != ADC3 )
+    {
+        for ( i = 0; i < ADC1_CH_NUM; i++)
+        {
+            g_s16Adc1_Buf[i][ g_s16Adc1_index ] = g_s16Adc1[i];
+            g_u32AdcSum[ ID_ADC1_CH00 + i ] += g_s16Adc1_Buf[i][ g_s16Adc1_index++ ];
+            if( g_s16Adc1_index >= ADC_BUF_SIZE ) g_s16Adc1_index = 0;
+            g_u32AdcSum[ ID_ADC1_CH00 + i ] -= g_s16Adc1_Buf[i][ g_s16Adc1_index   ];
+        }
+    }
+
+    for ( i = 0; i < ADC1_CH_NUM; i++)
+    {
+        g_s16Adc1_Buf[i][ g_s16Adc1_index ] = g_s16Adc1[i];
+        g_u32AdcSum[ ID_ADC1_CH00 + i ] += g_s16Adc1_Buf[i][ g_s16Adc1_index++ ];
+        if( g_s16Adc1_index >= ADC_BUF_SIZE ) g_s16Adc1_index = 0;
+        g_u32AdcSum[ ID_ADC1_CH00 + i ] -= g_s16Adc1_Buf[i][ g_s16Adc1_index   ];
+    }    
+
+#endif
+}
+
+
+u32 ADC_Get_PVIN(void)
+{
+	u32 result = 0uL;
+	if(g_sAdcData.cpv > 300uL){
+		result = (u32)g_sAdcData.cpv * 100uL;
+	}return result;
+}
+u32 ADC_Get_PVOUT(void)
+{
+	u32 result = 0uL;
+	if(g_sAdcData.vpv > 300uL){
+		result = (u32)g_sAdcData.vpv * 100uL;
+	}return result;
+}
+u32 ADC_Get_PV_BT(void)
+{
+	u32 result = 0uL;
+	if(g_sAdcData.tvpv > 300uL){
+		result = (u32)g_sAdcData.tvpv * 100uL;
+	}return result;
+}
+
+void Adc_DefaultV_Gain(sAdcGain *pstAdcGain)
+{
+	pstAdcGain->s124_center	= 0;
+	pstAdcGain->s124_slope	= 0;
+	pstAdcGain->gain_pv_in	= HV_GAIN_CAL_CPV;
+	pstAdcGain->gain_pv_ou	= HV_GAIN_CAL_VPV;
+	pstAdcGain->gain_pv_bt	= HV_GAIN_CAL_BTMS_VPV;
+	pstAdcGain->gain_ax_24v	= AUX24_GAIN;
+	pstAdcGain->gain_ax_13v	= AUX13_GAIN;
+	pstAdcGain->gain_ax_5v	= AUX5_GAIN;
+	pstAdcGain->gain_ax_3v	= AUX33_GAIN;
+
+	EEP_Write_Gain_PvIN(pstAdcGain->gain_pv_in);
+	EEP_Write_Gain_PvOU(pstAdcGain->gain_pv_ou);
+	EEP_Write_Gain_PvBT(pstAdcGain->gain_pv_bt);
+	//todo... add aux eep write func
+
+}
+
+u16 ADC_GetAdc_PVIN(void)					{	return g_sAdcData.cpvAdc;	}
+u16 ADC_GetAdc_PVOUT(void)					{	return g_sAdcData.vpvAdc;	}
+u16 ADC_GetAdc_PV_BT(void)					{	return g_sAdcData.tvpvAdc;	}
+
+/* Manual Set */
+void ADC_SetAdc_PVIN(u16 value)				{	g_sAdcData.cpv = value;	}
+void ADC_SetAdc_PVOUT(u16 value)			{	g_sAdcData.vpv = value;	}
+void ADC_SetAdc_PV_BT(u16 value)			{	g_sAdcData.tvpv = value;	}
+
+

@@ -1,0 +1,135 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_main.c
+\author             KKD
+\date               2025-11-21 
+\brief              Main ������ ���� �ڵ�.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_main.h"
+#include "ms_can_mon.h"
+#include "ms_rs232_mon.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+#define CPU_LOAD_PERCENT   70u
+#define CPU_LOAD_PERIOD_US 1000u   // 1 ms
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+Pkt_Rack RackPkt;
+sSystemTick g_sSysTick;
+sMn g_sMn;
+
+s16 	DataTh[NSTH] = {0,};
+s32 	DataPIH		= 0;													// Current High Data
+s32 	DataPIL		= 0;													// Current Low Data
+u32		DataPvDet[2] = {0,};											// Test Set PV Value
+float	RatPI[4];														// charge low, charge high, discharge low, discharge high
+float	GabPI[4];														// pack in, pack out discharge, pack out charge, pack volt reserved
+float	RatPV[4];														// charge low, charge high, discharge low, discharge high
+float	GabPV[4];														// pack in, pack out discharge, pack out charge, pack volt reserved
+float	RatAX;
+float	GabAX;
+/* Private variables ------------------------------------------------------------------------------*/
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+void ms_main(void)
+{
+	Proc_Bms_Init();
+	g_sSysTick.bInitProc = TRUE;
+
+#if 1
+	while(1)
+	{
+		HAL_IWDG_Refresh(&hiwdg);
+        HAL_WWDG_Refresh(&hwwdg);
+
+		Proc_Afe();
+
+		if(g_sMn.mn_start == TRUE){
+			Proc_MenualTest();
+		}
+					
+		if( g_sSysTick.bStateProc == TRUE){ 
+			g_sSysTick.bStateProc = FALSE;	
+			Proc_Detection(&RackPkt);
+//			Proc_CellBalance();
+		}
+		
+		if( g_sSysTick.bDataProc == TRUE){
+			g_sSysTick.bDataProc = FALSE;
+			Proc_Calcul_CvTh(&RackPkt);
+			Proc_Current(&RackPkt);
+			Proc_EepSave();
+		}
+
+		if( g_sSysTick.bSocProc== TRUE){ 
+			g_sSysTick.bSocProc = FALSE;
+			Proc_Soc_Soh(&RackPkt);
+		}
+	
+		if( g_sSysTick.bCtlProc == TRUE){
+			g_sSysTick.bCtlProc = FALSE;
+			Proc_Io();
+			Proc_Relay();
+		}
+
+#ifdef MVB_UPDATE    																		//2026-01-06   jkpark  MVB코드 수정.
+		//MVB_Proc();
+#else  //MVB_UPDATE
+		if( g_sSysTick.bMvbProc == TRUE){
+			g_sSysTick.bMvbProc = FALSE;
+			//MVB_Proc();
+		}
+#endif //MVB_UPDATE
+		
+		if( g_sSysTick.b10ms_Task == TRUE){
+			g_sSysTick.b10ms_Task = FALSE;
+			RTC_GetLocalTime(RackPkt.rtc);
+			GPIO_DOut_Rly_toggle();															// 2026-01-12 KKD	10ms relay pwm
+			Uart1_Proc();
+		}
+
+#ifdef CAN_BUF_UPATE    																	//2025-12-05   jkpark  Can Buffer 관련 수정.
+		Can_Proc();
+		Can_TxProc(McuCan_Int_Type);
+#else  //CAN_BUF_UPATE
+		Can_TxProc(McuCan_Ext_Type);
+		if( g_sSysTick.bCanProc == TRUE){
+			g_sSysTick.bCanProc = FALSE;
+			Can_Proc();
+		}
+#endif //CAN_BUF_UPATE
+
+#ifdef PWR_SLEEP_UPATE    																//2025-12-08   jkpark  Sleep 모드 적용.
+		__WFI();
+#endif //PWR_STANBAY_UPATE
+	}
+#else
+
+	while(1)
+	{
+
+		switch(g_sSysTick.u16SysTick)
+
+
+
+
+	}
+#endif
+}
+
+
+
+

@@ -1,0 +1,13 @@
+../User_Src/HALL_cab1500.c:44:6:HALL_Init	8	static
+../User_Src/HALL_cab1500.c:72:5:HALL_MovAvg	48	static
+../User_Src/HALL_cab1500.c:215:6:HALL_CanRx_TimeoutCheck	8	static
+../User_Src/HALL_cab1500.c:302:5:HALL_GetErrStatus	0	static
+../User_Src/HALL_cab1500.c:307:7:HALL_GetAnalogAmp	0	static
+../User_Src/HALL_cab1500.c:312:7:HALL_GetDigitalAmp	0	static
+../User_Src/HALL_cab1500.c:182:6:HALL_SM_CurrentSenseCheck	16	static
+../User_Src/HALL_cab1500.c:227:6:HALL_DiagnosicCheck	8	static
+../User_Src/HALL_cab1500.c:317:4:HALL_GetSeqCount	0	static
+../User_Src/HALL_cab1500.c:322:5:HALL_GetCurr1Sec	0	static
+../User_Src/HALL_cab1500.c:327:4:CRC8_SAE_J1850	0	static
+../User_Src/HALL_cab1500.c:110:6:HALL_CanRxParsing	24	static
+../User_Src/HALL_cab1500.c:287:6:HALL_Proc	8	static

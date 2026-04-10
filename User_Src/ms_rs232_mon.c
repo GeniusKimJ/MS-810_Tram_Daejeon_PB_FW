@@ -1,0 +1,805 @@
+﻿/*=================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(RS232 monitoring)	        	                                   *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2026-01-12                                                              	   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_rs232_mon.c
+\author             KKD
+\date               2026-01-12 
+\brief              RS232 monitoring
+*********************************************
+* History:
+* 2026-01-12     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_rs232_mon.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+/*=================================================================================================*
+// UART1 Uart1_Uart1Function function
+*=================================================================================================*/
+
+
+void Uart1_Uart1Function(void) {
+	Pkt_Uart1_Rxd 	*rxd 	= (void *)Rx1UartBuf;
+	u8	cmd		= rxd->cmd;
+	u8	scmd	= rxd->scmd;
+	u16	len 	= 12;
+
+	memset(&Tx1UartBuf, 0x00, sizeof(Tx1UartBuf));
+
+	switch(cmd) {
+	case CMD_BOOT:
+		Uart1_BootDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Txd);
+		break;
+	case CMD_BMU:
+		Uart1_BmuDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Bmu);
+		break;
+	case CMD_CMU:
+		Uart1_CmuDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Cmu);
+		break;
+	case CMD_RTC:
+		RTC_SetLocalTime((void *)rxd->data);
+		Uart1_BmuDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Bmu);
+		break;
+	case CMD_CAL:
+		Uart1_CalSystem((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Cal);
+		break;
+	case CMD_EEP:
+		//CntBuz = 2;
+		Uart1_EEPDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Eep);
+		break;
+	case CMD_MNM:
+		if(scmd == (u8)0xFC) {
+			Uart1_Manual_FetRelay0xFC_Mode((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		} else {
+			Uart1_ManualMode((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		}
+		len = sizeof(Pkt_Uart1_Mnl);
+
+		break;
+	case CMD_DETECT :
+		//Mon_DetDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+		len = sizeof(Pkt_Uart1_Det);
+		break;
+	default:
+		break;
+	}
+	HAL_UART_Transmit_DMA(&huart1, (void *)Tx1UartBuf, len);					// min 12.8us
+	//HAL_UART_Transmit_DMA(&huart1, &g_PktUart1Bmu, len);
+}
+
+/*=================================================================================================*
+// UART1 Uart1_Uart1BootFunction function
+*=================================================================================================*/
+void Uart1_Uart1BootFunction(void) {
+	Pkt_Uart1_Rxd 	*rxd 	= (void *)Rx1UartBuf;
+	u8	cmd		= rxd->cmd;
+	u8	subcmd	= rxd->scmd;
+	u8 	len 	= 0;
+	//__IO u32 flashaddr;
+	//u8 *ptr;
+
+	memset(Tx1UartBuf, 0x00, sizeof(Tx1UartBuf));
+
+	switch(cmd) {
+	case CMD_BOOT:															// 0x0B
+		if(subcmd == SCMD_BOOT_SEND) {										// Boot Send(0xB2)
+			Uart1_BootDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+			len = sizeof(Pkt_Uart1_Txd);
+		} else if(subcmd == SCMD_BOOT_END) {								// Boot End(0xB3)
+
+			PktFlashInfo[0].boot = BOOTMODE;
+			PktFlashInfo[0].totalchksum = CalTotalChkSum;
+			PktFlashInfo[0].allpagecnt = CalAllPageCnt;
+			PktFlashInfo[0].totaljudge = Total_Judge;
+
+			HAL_UART_Transmit_DMA(&huart1, (void *)(PktFlashInfo), sizeof(Pkt_Flash_Info));
+			HAL_Delay(5);
+
+			//if((Total_Judge == BOOTPASS) && (GetAllPageCnt == CalAllPageCnt)) {
+			if((GetAllPageCnt == CalAllPageCnt)) {
+			    Flash_Stm32F407_Erase(BOOTADDR, 1U);
+				Flash_Stm32f407_Write(BOOTADDR, (void *)(PktFlashInfo), (sizeof(Pkt_Flash_Info)/sizeof(u32)));		// Duration of time-2.2ms
+				Flash_Stm32f407_Write(BOOTADDR, (void *)(PktFlashInfo), (sizeof(Pkt_Flash_Info)/sizeof(u32)));		// Duration of time-2.2ms
+				Flash_Stm32f407_Write(BOOTADDR, &PktFlashInfo[0].boot, sizeof(Pkt_Flash_Info)/sizeof(u32));		// Duration of time-2.2ms
+			}
+
+			Uart1_BootEndDataSrc((void *)Rx1UartBuf, (void *)Tx1UartBuf);
+			len = sizeof(Pkt_Uart1_TxBootEnd);
+			HAL_UART_Transmit_DMA(&huart1, (void *)Tx1UartBuf, len);			// min 12.8us
+			HAL_Delay(5);
+
+			//CntBuz = 10;
+	    	fBoot_mode = EXIT;
+			HAL_NVIC_SystemReset();
+			//Delay_ms(250);
+		} else {
+		}
+		break;
+	default:
+		break;
+	}
+
+	HAL_UART_Transmit_DMA(&huart1, (void *)Tx1UartBuf, len);					// min 12.8us
+}
+
+/*=================================================================================================*
+// UART1 Uart1_BootDataSrc function
+*=================================================================================================*/
+void Uart1_BootDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Txd *boot) {
+	u8		*str 	= (void *)&boot->len;
+	u8		k;
+	u16		chksum;
+	u8	subcmd = rxd->scmd;
+	//u8 judge;
+
+	fRcvUart1Boot = TRUE;
+
+	switch(subcmd) {
+    case SCMD_BOOT_START:				// Boot End(0xB1)
+		fBoot_mode = ENTER_UARTBOOT;
+        memcpy(&GetAllPageCnt, &rxd->data[0], 4U);
+        memcpy(&GetTotalChkSum, &rxd->data[4], 4U);
+
+        Total_Judge = BOOTPASS;
+        break;
+    case SCMD_BOOT_SEND:				// Boot Send(0xB2)
+        memcpy(&PktMemBoot[0].addr, &rxd->data[0], 4U);
+        memcpy(&PktMemBoot[0].pagechksum, &rxd->data[4], 2U);
+
+    	for(k = 0; k < FLASH_SECTOR_SIZE; k++) {
+    		PktMemBoot[0].rxdat[k] = rxd->data[8U+k];
+    	}
+    	///u8 judge = BootUART1_FlashWrite();
+    	u8 judge = Boot_FlashWritePage64();
+    	if(judge == 0U) {
+    		Total_Judge = NG;
+    	}
+    	HAL_Delay(1);
+    	break;
+    case SCMD_BOOT_RTY:														// Boot Retry(0xB4)
+    	//Delay_ms(340);
+    	break;
+    default:
+        break;
+    }
+
+	boot->ack 		= ACK;
+	boot->stx 		= STX;
+	boot->etx      	= ETX;
+	boot->eot      	= EOT;
+
+	boot->len = (sizeof(Pkt_Uart1_Txd)-4U);
+	//memcpy(&boot->cmd, (void *)&rxd->cmd, 4);								// cmd, id, scmd, mode
+	boot->cmd 		= rxd->cmd;
+	boot->id 		= rxd->id;
+	boot->scmd 		= rxd->scmd;
+	boot->mode 		= rxd->mode;
+
+	chksum = 0;
+	for(k = 0; k < (sizeof(Pkt_Uart1_Txd)-6U); k++)	{
+		chksum += (u16)str[k];											// soh(1), stx(1), chksum(2), etx(1), eot(1),
+	}
+	boot->chksum = chksum;
+}
+
+/*=================================================================================================*
+// UART1 Uart1_BootEndDataSrc function
+*=================================================================================================*/
+void Uart1_BootEndDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_TxBootEnd *btend) {
+	u8		*str 	= (void *)&btend->len;
+	u8		k;
+	u16		chksum;
+	//u8	subcmd = rxd->scmd;
+
+	fRcvUart1Boot = TRUE;
+
+	btend->ack 		= ACK;
+	btend->stx 		= STX;
+	btend->etx      = ETX;
+	btend->eot      = EOT;
+
+	btend->len = (sizeof(Pkt_Uart1_TxBootEnd)-4U);
+	//memcpy(&boot->cmd, (void *)&rxd->cmd, 4);								// cmd, id, scmd, mode
+	btend->cmd = rxd->cmd;
+	btend->id = rxd->id;
+	btend->scmd = rxd->scmd;
+	btend->mode = rxd->mode;
+
+	btend->total_page_cnt = CalAllPageCnt;
+	btend->total_checksum = CalTotalChkSum;
+	//btend->total_page_cnt = GetAllPageCnt;
+	//btend->total_checksum = GetTotalChkSum;
+	btend->fw_ver = FWVRSN;
+	btend->mfr_year = RackPkt.Mf_year;
+	btend->mfr_month = RackPkt.Mf_month;
+	btend->mfr_day = RackPkt.Mf_day;
+	btend->mfr_sn = RackPkt.sr_num;
+	chksum = 0;
+	for(k = 0; k < (sizeof(Pkt_Uart1_TxBootEnd)-6U); k++) {
+	 	chksum += (u16)str[k];											// soh(1), stx(1), chksum(2), etx(1), eot(1),
+	}
+	btend->chksum = chksum;
+}
+
+/*=================================================================================================*
+// UART1 Uart1_BmuDataSrc function
+*=================================================================================================*/
+
+void Uart1_BmuDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Bmu *bmu) {
+	u8		*str 	= (void *)&bmu->len;
+	u16		k;
+	u16	chksum;
+	
+	bmu->flagbmu[0]	= (u8)(RackPkt.fdet & 0xFFU);	
+	bmu->flagbmu[1]	= (u8)((RackPkt.fdet >> 8) & 0xFFU);	
+	bmu->flagbmu[2]	= (u8)((RackPkt.fdet >> 16) & 0xFFU);
+	bmu->flagbmu[3]	= (u8)((RackPkt.fdet >> 24) & 0xFFU);
+		
+	bmu->flagbmu[4]	= (u8)(RackPkt.falm& 0xFFU);	
+	bmu->flagbmu[5]	= (u8)((RackPkt.falm >> 8) & 0xFFU);
+	
+	bmu->flagbmu[6]	= (u8)g_sRelayStatus.u8HvRly_CmdStatus;
+	bmu->flagbmu[7]	= (u8)(RackPkt.fbmssts & 0xFFU);
+	
+	bmu->i_mst 		= RackPkt.pi[IREAL];
+	bmu->packin 	= RackPkt.pv[PVINP];
+	bmu->packout 	= RackPkt.pv[PVOUT];
+	bmu->aux 		= RackPkt.aux;
+	
+	bmu->soc		= (u16)(RackPkt.soc / 10U);									// Soc : 0.1unit -> 1unit
+	bmu->Mf_year	= RackPkt.Mf_year;
+	bmu->Mf_month	= RackPkt.Mf_month;
+	bmu->Mf_day 	= RackPkt.Mf_day;
+	bmu->sr_num 	= RackPkt.sr_num;
+
+	for(k = 0U; k < NTH ; k++) {
+		bmu->temp[k] = RackPkt.TrayPkt[0].temp[k];
+	}
+
+	for(k = 0; k < 7U; k++) {
+		bmu->rtc[k] = (s8)RackPkt.rtc[k];
+	}
+	/* dbg
+	bmu->rtc[0] = 15;
+	bmu->rtc[1] = 16;
+	bmu->rtc[2] = 12;
+	bmu->rtc[3] = 1;
+	bmu->rtc[4] = 26;
+	bmu->rtc[5] = 12;
+	bmu->rtc[6] = 25;
+*/
+
+	bmu->soc		= (u16)(RackPkt.soc / 10U);									// Soc : 0.1unit -> 1unit
+	bmu->Mf_year    = RackPkt.Mf_year;
+	bmu->Mf_month   = RackPkt.Mf_month;
+	bmu->Mf_day     = RackPkt.Mf_day;
+	bmu->sr_num     = RackPkt.sr_num;
+
+	bmu->ack 		= ACK;
+	bmu->stx 		= STX;
+	bmu->etx      	= ETX;
+	bmu->eot      	= EOT;
+
+	bmu->len = (sizeof(Pkt_Uart1_Bmu))-4U;
+	memcpy(&bmu->cmd, (void *)&rxd->cmd, 4);								// cmd, id, scmd, mode
+	chksum = 0;
+
+	for(k = 0; k < (bmu->len); k++) {
+		chksum += (u16)str[k];											// soh(1), stx(1), chksum(2), etx(1), eot(1),
+	}
+	
+	bmu->chksum = chksum;
+}
+
+
+/*=================================================================================================*
+// UART1 Uart1_CmuDataSrc function
+*=================================================================================================*/
+
+void Uart1_CmuDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Cmu *cmu) {
+	u8		*str = (void *)&cmu->len;
+	u16		k;
+	u16	chksum;
+	u8 	slvid = rxd -> id;
+
+	memset(cmu, 0x00, sizeof(Pkt_Uart1_Cmu));
+	for(k = 0U; k < NCV; k++) {
+	 	cmu->cell[k] = RackPkt.TrayPkt[slvid-1U].cell[k];
+	}		
+	for(k = 0U; k < NTH; k++) {
+	 	cmu->temp[k] = RackPkt.TrayPkt[slvid-1U].temp[k];
+	}
+	cmu->ack 		= ACK;
+	cmu->stx 		= STX;
+	cmu->etx      	= ETX;
+	cmu->eot      	= EOT;
+
+	cmu->len 			= sizeof(Pkt_Uart1_Cmu)-4U;							// soh(1), stx(1), etx(1), eot(1),
+	memcpy(&cmu->cmd, (void *)&rxd->cmd, 4);
+	chksum = 0;																// cmd,id,scmd,mode
+	for(k = 0; k < (sizeof(Pkt_Uart1_Cmu)-6U); k++) {
+	  chksum += (u16)str[k];											// soh(1), stx(1), chksum(2), etx(1), eot(1),
+	}
+	cmu->chksum = chksum;
+}
+
+/*=================================================================================================*
+// UART1 Uart1_CalSystem function
+*=================================================================================================*/
+void Uart1_CalSystem(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Cal *cal) {
+	u8		*str = (void *)&cal->len;
+	u8 		id 		= rxd -> id;
+	u8 		scmd 	= rxd -> scmd;
+	u8		k;
+	u16		chksum;
+
+	if(id == 0U) {															// BMU
+		switch(scmd&0xF0U) {
+		case 0x60:															// Voltage Calibration
+			Uart1_CalPackVoltage((u8 *)Tx1UartBuf, (u8 *)&rxd->len);
+			break;
+		case 0xC0:															// Current Calibration
+			Uart1_CalPackCurrent((u8 *)Tx1UartBuf, (u8 *)&rxd->len);
+			break;
+		case 0xA0:															// Aux Calibration
+			Uart1_CalAUXVoltage((u8 *)Tx1UartBuf, (u8 *)&rxd->len);
+			break;
+		case 0xB0:															// Temp Calibration
+			break;
+		}
+	} else {
+		//Ltc6811_CalCellVolt((void *)Tx1UartBuf, (void *)&rxd->len);
+	}
+
+	cal->ack 		= ACK;
+	cal->stx 		= STX;
+	cal->etx      	= ETX;
+	cal->eot      	= EOT;
+	cal->len		= sizeof(Pkt_Uart1_Cal)-4U;							// soh(1), stx(1), etx(1), eot(1),
+
+	memcpy(&cal->cmd, (void *)&rxd -> cmd, 4U);								// cmd, id, scmd, mode
+	chksum = 0;
+	for(k = 0; k < (sizeof(Pkt_Uart1_Cal)-6U); k++) {
+	 	chksum += (u16)str[k];											// soh(1), stx(1), chksum(2), etx(1), eot(1),
+	}
+	cal->chksum = chksum;
+}
+
+
+/*=================================================================================================*
+// UART1 Uart1_EEPDataSrc function
+*=================================================================================================*/
+void Uart1_EEPDataSrc(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Eep *eep) {
+	u8		*str = (void *)&eep->len;
+	u8		k;
+	u8 		scmd = rxd->scmd;
+	u8 		mode = rxd->mode;
+	u16		chksum, rxcnt;
+
+	switch(scmd) {
+	case 0x01:				// Read
+		rxcnt = ((u16)rxd->data[1]<<8)|rxd->data[0];
+		EEP_DataRead(mode, rxcnt, (void *)eep->eepdata);
+		break;
+	case 0x02:				// Clear
+		EEP_DataClear(mode);
+		//BlkBoxFlashErase(mode);												// Block Box Erase
+		break;
+	default:
+		break;
+	}
+
+	eep->ack	= ACK;
+	eep->stx 	= STX;
+	eep->etx	= ETX;
+	eep->eot	= EOT;
+
+	eep->len	= sizeof(Pkt_Uart1_Eep) - 4U;
+	memcpy(&eep->cmd, (void *)&rxd->cmd, 4);								//cmd, id, scmd, mode
+	chksum = 0;
+	for(k = 0; k < (sizeof(Pkt_Uart1_Eep)-6U); k++) {
+		chksum += (u16)str[k];
+	}
+	eep->chksum = chksum;
+}
+
+/*=================================================================================================*
+// UART1 Uart1_ManualMode function
+*=================================================================================================*/
+void Uart1_ManualMode(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Mnl *mnl) {
+	static u8	fMnbalstart = 0;
+
+	u8 		scmd = rxd->scmd;
+	u8 		mode = rxd->mode;
+	u16		chksum;
+	u8			k;
+	u8			*str = (void *)&mnl->len;
+	u8 		*rxcdata = (u8 *)rxd->data;
+	///u16 		*rxidata = (u16 *)rxd->data;
+	u8 		*txcdata = (u8 *)mnl->data;
+	u16		ibuffer;
+	u32		u32BalancingFlag;
+
+
+	
+	memcpy(&ibuffer, (void *)&rxd->data, 2);
+
+	switch(scmd) {
+
+	case 0xAC:																// MFC S/N Number
+		switch(mode) {
+		case WRITE:															// Write
+			if(rxcdata[0] > 99U) {											// year
+				break;
+			}
+			if(rxcdata[1] > 12U) {											// month
+				break;
+			}
+			if(rxcdata[2] > 31U) {											// day
+				break;
+			}
+			//HAL_StatusTypeDef HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, u16 DevAddress, u16 MemAddress, u16 MemAddSize, u8 *pData, u16 Size, u32 Timeout)
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, MFDATA, I2C_MEMADD_SIZE_16BIT, (void *)&rxcdata[0], 3U*sizeof(u8), 20);
+			HAL_Delay(10);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, MSRNUM, I2C_MEMADD_SIZE_16BIT, (void *)&rxcdata[3], 2U*sizeof(u8), 20);
+			HAL_Delay(10);
+			EEP_ReadSysInfo();
+			break;
+		case READ:															// Read
+			txcdata[0] = RackPkt.Mf_year;
+			txcdata[1] = RackPkt.Mf_month;
+			txcdata[2] = RackPkt.Mf_day;
+			txcdata[3] = (u8)((u16)RackPkt.sr_num & 0xFFU);
+			txcdata[4] = (u8)((u16)RackPkt.sr_num >> 8U);
+			break;
+		}
+		break;
+	case 0xBC:																// Balancing Control
+		memcpy(&u32BalancingFlag, (void *)&rxd->data,4);
+
+		if(u32BalancingFlag == (u32)0){
+			fMnbalstart = 0;
+			RackPkt.TrayPkt[0].fbalance = 0;
+		}else{
+			fMnbalstart = 1;
+			RackPkt.TrayPkt[0].fbalance = u32BalancingFlag;
+		}	
+		break;
+	case 0xCC:																// Charge Mode
+		break;
+	case 0xDC:																// F/W Version
+		switch(mode) {
+		case WRITE:															// Write
+			break;
+		case READ:															// Read
+			txcdata[0] = (u8)((u16)FWVRSN & 0xFFU);
+			txcdata[1] = (u8)((u16)FWVRSN >> 8U);
+			break;
+		}
+		break;
+	case 0xEC:																// CntCycle R/W, 150206
+		switch(mode) {
+		case WRITE:															// Write
+			if(ibuffer > 9999U) {
+			}
+			else
+			{
+				RackPkt.cyccnt = ibuffer;
+			}
+			break;
+		case READ:															// Read
+			txcdata[0] = (u8)(RackPkt.cyccnt & 0xFFU);
+			txcdata[1] = (u8)(RackPkt.cyccnt >> 8U);
+			break;
+		}
+		break;
+	case 0xFD:																// Battery Type
+		break;
+	case 0xAE:																// 210107.	BMS Test Mode 추가. JJH.
+		break;
+	default:
+		break;
+	}
+
+	mnl->ack	= ACK;
+	mnl->stx 	= STX;
+	mnl->etx	= ETX;
+	mnl->eot	= EOT;
+
+	mnl->len	= sizeof(Pkt_Uart1_Mnl) - 4U;
+	memcpy(&mnl->cmd, (void *)&rxd->cmd, 4);								// cmd, id, scmd, mode
+	chksum = 0;
+	for(k = 0; k < (sizeof(Pkt_Uart1_Mnl)-6U); k++)	{
+		chksum += (u16)str[k];
+	}
+	mnl->chksum = chksum;
+}
+
+
+/*=================================================================================================*
+// UART1 Uart1_Manual_FetRelay0xFC_Mode function
+*=================================================================================================*/
+void Uart1_Manual_FetRelay0xFC_Mode(Pkt_Uart1_Rxd *rxd, Pkt_Uart1_Mnl *mnl) {
+	
+	static	u8	fMnrlystart = 0;
+	u8 		scmd = rxd->scmd;
+	u8 		mode = rxd->mode;
+	u16		chksum;
+	u8			k;
+	u8			*str = (void *)&mnl->len;
+	u8 		*rxcdata = (u8 *)rxd->data;
+	//u16 		*rxidata = (u16 *)rxd->data;
+	//u8 		*txcdata = (u8 *)mnl->data;
+	u16		ibuffer;
+	//u8			u8RlySts = 0;
+	memcpy(&ibuffer, (void *)&rxd->data, 2);
+
+	if(scmd == (u8)0xFC){		
+		fMnrlystart = 1;
+	
+		switch(mode){
+		case 0x00:	//Discharge
+			if(rxcdata[0] == 1U){
+				//mnrly |= (1U << DCK);
+			}else{
+				//mnrly &= ~(1U << DCK);
+			}
+			break;
+		case 0x01:	//Charge
+			if(rxcdata[0] == 1U){
+				//mnrly |= (1U << CK);
+				//mnrly |= (1U << LCK);
+			}else{
+				//mnrly &= ~(1U << CK);
+				//mnrly &= ~(1U << LCK);
+			}
+			break;
+		case 0x02:	//preDischarge
+			if(rxcdata[0] == 1U){
+				//mnrly |= (1U << PDCK);
+			}else{
+				//mnrly &= ~(1U << PDCK);
+			}
+			break;
+		}
+	}
+
+	mnl->ack	= ACK;
+	mnl->stx 	= STX;
+	mnl->etx	= ETX;
+	mnl->eot	= EOT;
+
+	mnl->len	= sizeof(Pkt_Uart1_Mnl) - 4U;
+	memcpy(&mnl->cmd, (void *)&rxd->cmd, 4);								// cmd, id, scmd, mode
+	chksum = 0;
+	for(k = 0; k < (sizeof(Pkt_Uart1_Mnl)-6U); k++)	{
+		chksum += (u16)str[k];
+	}
+	mnl->chksum = chksum;
+}
+
+
+// mode == 1 : DataCVIn
+// mode == 2 : DataPVOut
+void Uart1_CalPackVoltage(u8 *tx, u8 *rx) {
+	Pkt_Cal_Txd		*txb = (void *)tx;
+	Pkt_Cal_Rxd		*rxb = (void *)rx;
+	u8 		mode = 0U;
+	u8 		scmd = (u8)(rxb -> scmd);
+	s32 		*get = (void *)rxb -> data;
+	float 		rate, gab;
+	s32 		cmp;
+	double 	d64_buf[4];
+
+	if((u8)(rxb -> mode) > 0U) {
+		mode = (u8)((rxb -> mode) - 1U);
+	}
+	switch(scmd) {
+	case 0x60:													// Get Noncalibrated Data
+		///txb->data[0] = (s32)((s32)(RackPkt.pv[mode] * (s32)RatPV[mode]) + (s32)GabPV[mode]);
+		d64_buf[0] = (double)RackPkt.pv[mode] * (double)RatPV[mode];
+		d64_buf[1] = d64_buf[0] + (double)GabPV[mode];
+		txb->data[0] = (s32)d64_buf[1];
+		break;
+	case 0x6A:													// Read Calibrated Data
+		txb->data[0] = (s32)RackPkt.pv[mode];
+		break;
+	case 0x6C:													// Voltage Calibration
+		///rate = (float)(get[3] - get[1]) / (get[2] - get[0]);
+		d64_buf[0] = (double)get[3] - (double)get[1];
+		d64_buf[1] = (double)get[2] - (double)get[0];
+		d64_buf[2] = d64_buf[0] / d64_buf[1];
+		rate = (float)d64_buf[2];
+
+		///gab  = (float)((float)get[1] - (rate * (float)get[0]));	//
+		d64_buf[0] = (double)rate * (double)get[0];
+		d64_buf[1] = (double)get[1] - d64_buf[0];
+		gab  = (float)d64_buf[1];
+
+		//cmp = rate * 1000;			// Check Gain = 0.75 ~ 1.25
+		d64_buf[0] = (double)rate * (double)1000;
+		cmp = (s32)d64_buf[0];					// Check Gain = 0.75 ~ 1.25
+		if((cmp < 750) || (1250 < cmp) || (get[0] == get[2])) {
+			txb->data[0] = 999999;
+			txb->data[1] = 999999;
+		} else {
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP,(u16)(MRATPV + (sizeof(float)*mode)), I2C_MEMADD_SIZE_16BIT, (void *)&rate, sizeof(float), 50);
+			HAL_Delay(10);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(MGABPV + (sizeof(float)*mode)), I2C_MEMADD_SIZE_16BIT, (void *)&gab, sizeof(float), 50);
+			HAL_Delay(10);
+			EEP_ReadCalData();
+			///txb->data[0] = RatPV[mode]*1000000UL;
+			d64_buf[0] = (double)RatPV[mode] * (double)1000000UL;
+			txb->data[0] = (s32)d64_buf[0];
+			txb->data[1] = (s32)GabPV[mode];
+		}
+		break;
+	case 0x6F:													// Voltage Calibration
+		///txb->data[0] = RatPV[mode]*1000000UL;
+		d64_buf[0] = (double)RatPV[mode] * (double)1000000UL;
+		txb->data[0] = (s32)d64_buf[0];
+		txb->data[1] = (s32)GabPV[mode];
+		break;
+	}
+}
+
+/*************************************** 
+** Discrip	: modify Proc_GetCurrent_4Point
+** Date 	: 2025.06	
+** Author	: kDk
+****************************************/
+	
+//mode == 1 : charge low;
+//mode == 2 : charge high;
+//mode == 3 : discharge low;
+//mode == 4 : discharge high;
+//ori
+
+/*************************************** 
+** Discrip	: modify Uart1_CalPackCurrent
+** Date 	: 2025.06	
+** Author	: kDk
+****************************************/
+
+void Uart1_CalPackCurrent(u8 *tx, u8 *rx) {
+	Pkt_Cal_Txd		*txb = (void *)tx;
+	Pkt_Cal_Rxd		*rxb = (void *)rx;
+	u8 		mode = 0U;
+	u8 		scmd = (u8)(rxb -> scmd);
+	s32 	*get = (void *)rxb -> data;
+	float 	rate, gab;
+	s32 	cmp;
+	double 	d64_buf[4];
+
+	if((u8)(rxb -> mode) > 0U) 	{mode = ((u8)(rxb -> mode) - 1U);}
+	HALL_s124_GetCurrent();
+
+	switch(scmd) {
+	case 0xC0:																// Get Non Calibrated Data
+		if((mode == 0U)||(mode == 2U))	{txb->data[0] = DataPIL;}
+		else 							{txb->data[0] = DataPIH;}
+		break;
+	case 0xCA:
+		if((mode == 0U)||(mode == 2U)) {txb->data[0] = (s32)DataPIL;}	// Chg Low(0), DCH Low(2)
+		if((mode == 1U)||(mode == 3U)) {txb->data[0] = (s32)DataPIH;}	// Chg High(1), DCH High(3)
+		break;
+	case 0xCC:																// Current Calibratio
+		d64_buf[0] = (double)get[3] - (double)get[1];
+		d64_buf[1] = (double)get[2] - (double)get[0];
+		d64_buf[2] = d64_buf[0] / d64_buf[1];
+		rate = (float)d64_buf[2];
+
+		///gab  = (float)get[1] - rate * (float)get[0];
+		d64_buf[0] = (double)rate * (double)get[0];
+		d64_buf[1] = (double)get[1] - d64_buf[0];
+		gab = (float)d64_buf[1];
+
+		///cmp = rate * 1e+3;												// Check Gain = 0.75 ~ 1.25
+		d64_buf[0] = (double)rate * (double)1e+3;
+		cmp = (s32)d64_buf[0];
+
+		HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(MRATPI + (sizeof(float)*mode)), I2C_MEMADD_SIZE_16BIT, (void *)&rate, sizeof(float), 20);
+		HAL_Delay(10);
+		HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(MGABPI + (sizeof(float)*mode)), I2C_MEMADD_SIZE_16BIT, (void *)&gab, sizeof(float), 20);
+		HAL_Delay(10);
+		EEP_ReadCalData();
+		//txb->data[0] = RatPI[mode]*1000000.;
+		d64_buf[0] = (double)RatPI[mode] * (double)1000000;
+		txb->data[0] = (s32)d64_buf[0];
+		txb->data[1] = (s32)GabPI[mode];
+		break;
+	case 0xCF:
+		///txb->data[0] = RatPI[mode]*(s32)1000000L;
+		d64_buf[0] = (double)RatPI[mode] * (double)1000000L;
+		txb->data[0] = (s32)d64_buf[0];
+		txb->data[1] = (s32)GabPI[mode];
+		break;
+	}
+}
+
+void Uart1_CalAUXVoltage(u8 *tx, u8 *rx) {
+#if 0
+	Pkt_Cal_Txd		*txb = (void *)tx;
+	Pkt_Cal_Rxd		*rxb = (void *)rx;
+	u8 		scmd = rxb->scmd;
+	s32 		*get = (s32 *)rxb->data;
+	float 		rate, gab;
+	s32 		cmp;
+
+	switch(scmd) {
+	case 0xA0:													// Get Noncalibrated Data
+		txb->data[0] = (s32)((s32)RackPkt.aux*(s32)RatAX) + (s32)GabAX;
+		break;
+	case 0xAA:													// Read Calibrated Data
+		txb->data[0] = (s32)RackPkt.aux;
+		break;
+	case 0xAC:													// Voltage Calibration
+		rate = (float)(get[3] - get[1]) / (get[2] - get[0]);
+		gab  = (float)((float)get[1] - (rate * (float)get[0]));
+		cmp = rate * 1000;										// Check Gain = 0.75 ~ 1.25
+		if((cmp < 750)||(1250 < cmp)||(get[0]==get[2])) {
+			txb->data[0] = 999999;
+			txb->data[1] = 999999;
+		} else {
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, MRATAX, I2C_MEMADD_SIZE_16BIT, (void *)&rate, sizeof(float), 20);
+			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, MGABAX, I2C_MEMADD_SIZE_16BIT, (void *)&gab, sizeof(float), 20);
+			HAL_Delay(10);
+			EEP_ReadCalData();
+			txb->data[0] = RatAX*1000000L;
+			txb->data[1] = GabAX;
+		}break;
+	case 0xAF:													// Voltage Calibration
+		txb->data[0] = RatAX*1000000L;
+		txb->data[1] = GabAX;
+		break;
+	}
+#endif
+	
+}
+void Uart1_Rx1Function(void) {
+  //tp2(1);Uart1_Uart1Function
+  Uart_GetRx1DmatoUartBuf();
+  if(Uart_ChkUartRx1Dma() != 0U) {                     // per 10ms
+#if 1
+    Uart1_Uart1Function();
+    for(u16 hh = 0; hh < sizeof(Pkt_Uart1_Rxd); hh++) {
+      Rx1UartBuf[hh] = 0x00;
+    }
+#endif
+  }
+
+  //tp2(0);
+}
+
+void Uart1_Init(void)
+{
+	memset(Rx1DMABuf,0x00,sizeof(Rx1DMABuf));
+	HAL_UART_Receive_DMA(&huart1, Rx1DMABuf, sizeof(Pkt_Uart1_Rxd));
+}
+
+void Uart1_Proc(void)
+{
+	Uart1_Rx1Function();
+}
+
+
+

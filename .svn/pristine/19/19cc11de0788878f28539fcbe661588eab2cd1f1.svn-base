@@ -1,0 +1,411 @@
+﻿/**
+\file               ms_Util.cpp
+\author             jkpark
+\date               2025-11-25 
+\brief              공용으로 사용하는 함수
+*/
+/************************ (C) COPYRIGHT 2012 Misum ***************************
+* History:
+* 2012-06-20  v0.01    Create
+********************************************************************************/
+/* Includes ------------------------------------------------------------------*/
+//#include "stdafx.h"
+#include "stm32f4xx_hal.h"
+#include "ms_config.h"
+#include "ms_Util.h"
+
+/* Private define ------------------------------------------------------------*/
+
+
+#define ENTER_CRITICAL()   uint32_t primask = __get_PRIMASK(); __disable_irq()      //jkpark 2025-12-02 시스템 코드를 사용하므로 "stm32f4xx_hal.h"가 필요함.
+#define EXIT_CRITICAL()    __set_PRIMASK(primask)                                   //jkpark 2025-12-02 시스템 코드를 사용하므로 "stm32f4xx_hal.h"가 필요함.
+
+/* Private macro -------------------------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+
+typedef enum
+{
+    ORDER_ASC = 0,
+    ORDER_DESC,
+    ORDER_UNKNOWN     /* 모든 값이 동일할 때 */
+} order_t;
+
+/* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
+
+
+/*********************************************************************************/
+//3   Function Name  : BufferInit
+/*----------------------------------------------------------------------------*//**
+\brief     BufferInfoType에 Buff의 위치와 크기를 설정한다.
+\return    함수 성공 여부.
+*//*******************************************************************************/
+msStatus_t BufferInit( BufferInfoType *bufInfo, unsigned char *buffer, int bufSize ){
+    if ( buffer     == NULL ) return MS_ERROR;
+    if ( bufSize    <= 0    ) return MS_ERROR;
+    bufInfo->pBuffer    = buffer;
+    bufInfo->bufSize    = bufSize;
+    bufInfo->head      = 0;
+    bufInfo->tail      = 0;
+    bufInfo->count     = 0;
+    return MS_SUCCESS;
+}
+
+/*********************************************************************************/
+//3   Function Name  : BufferWrite
+/*----------------------------------------------------------------------------*//**
+\brief     bufInfo에 데이터를 써 넣는다. usedSize 사용한 전체 크기.
+\return    함수 성공 여부.
+*//*******************************************************************************/
+msStatus_t BufferWrite( BufferInfoType *bufInfo, unsigned char *data, int dataSize, int *usedSize ){
+    int  retValue = MS_SUCCESS;
+    int  remainSize = 0;
+    int  bufEndCount = 0;    
+    int  headTemp = 0;                          //jkpark 2025-12-02 데이터 일관성 및 컴파일러 최적화 오류 방지를 위해 값을 읽어서 사용.
+
+    if( dataSize <= 0 )return MS_SUCCESS;
+
+    ENTER_CRITICAL();                           //jkpark 2025-12-02 인터럽트 금지.
+
+    headTemp = bufInfo->head;                   //jkpark 2025-12-02 데이터 일관성 및 컴파일러 최적화 오류 방지를 위해 값을 읽어서 사용.
+
+    retValue = BufferCheck( bufInfo, dataSize, &remainSize );
+    if( retValue != MS_SUCCESS )
+    {
+        //jkpark 2025-12-02 데이터를 넣을 수 없으면 모자란 수를 리턴.
+        if( usedSize != NULL ) *usedSize = remainSize;
+        EXIT_CRITICAL();    //jkpark 2025-12-02 인터럽트 허용.
+        return retValue;
+    }
+
+    bufEndCount = bufInfo->bufSize - headTemp;
+
+    if( dataSize <= bufEndCount )
+    {
+        //jkpark 2025-12-02 Wrap 없음. 한번에 복사.
+        memcpy( &bufInfo->pBuffer[ headTemp ], data, dataSize );
+    }
+    else
+    {
+        //jkpark 2025-12-02 버퍼 끝까지 채움.
+        memcpy( &bufInfo->pBuffer[ headTemp ], data,  bufEndCount );
+        //jkpark 2025-12-02 남은 데이터 복사.
+        memcpy( &bufInfo->pBuffer[ 0 ],  data + bufEndCount, dataSize - bufEndCount );
+    }
+
+    //jkpark 2025-12-02 head 위치 업데이트.
+    bufInfo->head = ( headTemp + dataSize ) % bufInfo->bufSize;
+    //jkpark 2025-12-02 count업데이트.
+    bufInfo->count += dataSize;
+
+    //jkpark 2025-12-02 현재 버퍼를 채우고 있는 수 업데이트.
+    if( usedSize != NULL ) *usedSize = bufInfo->count;
+
+    EXIT_CRITICAL();            //jkpark 2025-12-02 인터럽트 허용.
+    return retValue;    
+}
+
+/*********************************************************************************/
+//3   Function Name  : BufferRead
+/*----------------------------------------------------------------------------*//**
+\brief     buff에서 데이터를 돌려줌. reqSize 읽을 데이터 크기. readSize 읽은 데이터 크기.
+\return    함수 성공 여부.
+*//*******************************************************************************/
+msStatus_t BufferRead( BufferInfoType *bufInfo, unsigned char *data, int reqSize, int *readSize ){
+    int  retValue = MS_SUCCESS;
+    int  readSizeTemp = 0;
+    int  bufEndCount = 0;
+    int  tailTemp = 0;                          //jkpark 2025-12-02 데이터 일관성 및 컴파일러 최적화 오류 방지를 위해 값을 읽어서 사용.
+    int  countTemp = 0;                         //jkpark 2025-12-02 데이터 일관성 및 컴파일러 최적화 오류 방지를 위해 값을 읽어서 사용.
+
+    if (reqSize <= 0) return retValue;
+
+    ENTER_CRITICAL();                           //jkpark 2025-12-02 인터럽트 금지.
+
+    tailTemp = bufInfo->tail;                    //jkpark 2025-12-02 데이터 일관성 및 컴파일러 최적화 오류 방지를 위해 값을 읽어서 사용.
+    countTemp = bufInfo->count;                  //jkpark 2025-12-02 데이터 일관성 및 컴파일러 최적화 오류 방지를 위해 값을 읽어서 사용.
+
+    //jkpark 2025-12-02 버퍼에 있는 데이터의 크기에 따라 반환하는 크기가 달라짐.
+    if( reqSize <= countTemp )
+    {
+        readSizeTemp = reqSize;
+    }
+    else
+    {
+        if( countTemp == 0 )
+        {
+            //jkpark 2025-12-02 읽을 수 있는 데이터가 없는 경우.
+            readSizeTemp = 0 ;
+        }
+        else
+        {
+            //jkpark 2025-12-02 읽을 수 있는 데이터가 적은 경우 있는 데이터만 반환.
+            readSizeTemp = countTemp;
+        }
+        retValue = MS_ERROR;
+    }
+
+    //jkpark 2025-12-02 tail부터 버퍼의 끝까지 남은 크기.
+    bufEndCount = bufInfo->bufSize - tailTemp;
+
+    if( readSizeTemp <= bufEndCount )
+    {
+        //jkpark 2025-12-02 Wrap 없음. 한번에 복사.
+        memcpy( data, &bufInfo->pBuffer[ tailTemp ], readSizeTemp );
+    }
+    else
+    {
+        //jkpark 2025-12-02 버퍼 끝까지 복사.
+        memcpy( data, &bufInfo->pBuffer[ tailTemp ], bufEndCount );
+        //jkpark 2025-12-02 처음부터 남은 요구량 만큼 복사.
+        memcpy( ( data + bufEndCount ) , &bufInfo->pBuffer[ 0 ], readSizeTemp - bufEndCount );
+    }
+
+    //jkpark 2025-12-02 tail 위치 업데이트.
+    bufInfo->tail = ( tailTemp + readSizeTemp ) % bufInfo->bufSize;
+    
+    //jkpark 2025-12-02 count업데이트.
+    bufInfo->count -= readSizeTemp;
+
+    if( readSize != NULL ) *readSize = readSizeTemp;
+
+    EXIT_CRITICAL();            //jkpark 2025-12-02 인터럽트 허용.
+    return retValue;
+
+}
+
+
+/*********************************************************************************/
+//3   Function Name  : BufferCheck
+/*----------------------------------------------------------------------------*//**
+\brief     bufInfo에 dataSize가 들어갈 수 있는지 확인. remainSize: dataSize 만큼 넣으면 남게 되는 크기.
+\return    함수 성공 여부.
+*//*******************************************************************************/
+msStatus_t BufferCheck( BufferInfoType *bufInfo, int dataSize, int *remainSize ){
+    int  retValue = MS_SUCCESS;
+    int  remainSizeTemp = 0;
+
+    remainSizeTemp = bufInfo->bufSize - ( bufInfo->count + dataSize );
+
+    if( remainSizeTemp < 0 ) retValue = MS_ERROR;
+    if( remainSize != NULL ) *remainSize = remainSizeTemp;
+
+    return retValue;
+}
+
+/*********************************************************************************/
+//3   Function Name  : MISUM__memcpy_s
+/*----------------------------------------------------------------------------*//**
+\brief     memcpy_s를 사용할 수 없는 경우 같은 역할을 하는 함수.
+*//*******************************************************************************/
+void *ms_memcpy_s( void *dest, unsigned long destSize, void *src, unsigned long copySize ){
+    unsigned long i = 0;
+    if( destSize < copySize )return NULL;
+    for( i = 0 ; i < copySize ; i ++ ){
+        ((unsigned char*)dest)[ i ] = ((unsigned char*)src)[ i ];
+    }
+    return dest;
+}
+
+/*********************************************************************************/
+//3   Function Name  : MISUM__memset
+/*----------------------------------------------------------------------------*//**
+\brief     memset을 대신할 수 있는 함수.
+*//*******************************************************************************/
+void *ms_memset( void *dest, int c, unsigned long n ){
+    unsigned long i = 0;
+    for( i = 0 ; i < n ; i ++ ){
+        ((unsigned char*)dest)[ i ] = c;
+    }
+    return dest;
+}
+
+/*********************************************************************************/
+//3   Function Name  : UpdateFCS
+/*----------------------------------------------------------------------------*//**
+\brief     CRC-16을 구하는 함수.
+\return    CRC-16결과값.
+*//*******************************************************************************/
+unsigned short UpdateFCS(unsigned short nFCS, unsigned char *pBlock,unsigned long nSize)
+{
+    unsigned long i = 0 , j = 0;
+    const unsigned short tblFCS[256] = {
+        0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
+        0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
+        0x1081, 0x0108, 0x3393, 0x221a, 0x56a5, 0x472c, 0x75b7, 0x643e,
+        0x9cc9, 0x8d40, 0xbfdb, 0xae52, 0xdaed, 0xcb64, 0xf9ff, 0xe876,
+        0x2102, 0x308b, 0x0210, 0x1399, 0x6726, 0x76af, 0x4434, 0x55bd,
+        0xad4a, 0xbcc3, 0x8e58, 0x9fd1, 0xeb6e, 0xfae7, 0xc87c, 0xd9f5,
+        0x3183, 0x200a, 0x1291, 0x0318, 0x77a7, 0x662e, 0x54b5, 0x453c,
+        0xbdcb, 0xac42, 0x9ed9, 0x8f50, 0xfbef, 0xea66, 0xd8fd, 0xc974,
+        0x4204, 0x538d, 0x6116, 0x709f, 0x0420, 0x15a9, 0x2732, 0x36bb,
+        0xce4c, 0xdfc5, 0xed5e, 0xfcd7, 0x8868, 0x99e1, 0xab7a, 0xbaf3,
+        0x5285, 0x430c, 0x7197, 0x601e, 0x14a1, 0x0528, 0x37b3, 0x263a,
+        0xdecd, 0xcf44, 0xfddf, 0xec56, 0x98e9, 0x8960, 0xbbfb, 0xaa72,
+        0x6306, 0x728f, 0x4014, 0x519d, 0x2522, 0x34ab, 0x0630, 0x17b9,
+        0xef4e, 0xfec7, 0xcc5c, 0xddd5, 0xa96a, 0xb8e3, 0x8a78, 0x9bf1,
+        0x7387, 0x620e, 0x5095, 0x411c, 0x35a3, 0x242a, 0x16b1, 0x0738,
+        0xffcf, 0xee46, 0xdcdd, 0xcd54, 0xb9eb, 0xa862, 0x9af9, 0x8b70,
+        0x8408, 0x9581, 0xa71a, 0xb693, 0xc22c, 0xd3a5, 0xe13e, 0xf0b7,
+        0x0840, 0x19c9, 0x2b52, 0x3adb, 0x4e64, 0x5fed, 0x6d76, 0x7cff,
+        0x9489, 0x8500, 0xb79b, 0xa612, 0xd2ad, 0xc324, 0xf1bf, 0xe036,
+        0x18c1, 0x0948, 0x3bd3, 0x2a5a, 0x5ee5, 0x4f6c, 0x7df7, 0x6c7e,
+        0xa50a, 0xb483, 0x8618, 0x9791, 0xe32e, 0xf2a7, 0xc03c, 0xd1b5,
+        0x2942, 0x38cb, 0x0a50, 0x1bd9, 0x6f66, 0x7eef, 0x4c74, 0x5dfd,
+        0xb58b, 0xa402, 0x9699, 0x8710, 0xf3af, 0xe226, 0xd0bd, 0xc134,
+        0x39c3, 0x284a, 0x1ad1, 0x0b58, 0x7fe7, 0x6e6e, 0x5cf5, 0x4d7c,
+        0xc60c, 0xd785, 0xe51e, 0xf497, 0x8028, 0x91a1, 0xa33a, 0xb2b3,
+        0x4a44, 0x5bcd, 0x6956, 0x78df, 0x0c60, 0x1de9, 0x2f72, 0x3efb,
+        0xd68d, 0xc704, 0xf59f, 0xe416, 0x90a9, 0x8120, 0xb3bb, 0xa232,
+        0x5ac5, 0x4b4c, 0x79d7, 0x685e, 0x1ce1, 0x0d68, 0x3ff3, 0x2e7a,
+        0xe70e, 0xf687, 0xc41c, 0xd595, 0xa12a, 0xb0a3, 0x8238, 0x93b1,
+        0x6b46, 0x7acf, 0x4854, 0x59dd, 0x2d62, 0x3ceb, 0x0e70, 0x1ff9,
+        0xf78f, 0xe606, 0xd49d, 0xc514, 0xb1ab, 0xa022, 0x92b9, 0x8330,
+        0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78
+    };
+
+    for(j=0; j<nSize; j++) {
+        i = ((unsigned short)nFCS ^ *pBlock++) & 0xff;
+        nFCS = (nFCS >> 8) ^ tblFCS[i];
+    }
+    return nFCS;
+}
+
+/*********************************************************************************/
+//3   Function Name  : UpdateChecksum
+/*----------------------------------------------------------------------------*//**
+\brief     CheckSum을 구하는 함수.
+\return    CheckSum결과값.
+*//*******************************************************************************/
+unsigned short UpdateChecksum(unsigned short checkSum, unsigned char *pBuffer, unsigned long nBytes)
+{
+    for(unsigned long i = 0; i<nBytes; i++) {
+        checkSum += (unsigned char)pBuffer[i];
+    }
+    return checkSum;
+}
+
+
+static order_t detect_order(const int *arr, int n)
+{
+    for (int i = 1; i < n; i++)
+    {
+        if (arr[i] > arr[i - 1])
+        {
+            return ORDER_ASC;     /* 오름차순 */
+        }
+        else if (arr[i] < arr[i - 1])
+        {
+            return ORDER_DESC;    /* 내림차순 */
+        }
+    }
+
+    return ORDER_UNKNOWN;         /* 모든 값 동일 */
+}
+static int lower_bound_ex(const int *arr, int n, int target, order_t order)
+{
+    int left = 0;
+    int right = n;
+
+    while (left < right)
+    {
+        int mid = left + (right - left) / 2;
+
+        if (order == ORDER_ASC)
+        {
+            if (arr[mid] < target)
+            {
+                left = mid + 1;
+            }
+            else
+            {
+                right = mid;
+            }
+        }
+        else
+        {
+            if (arr[mid] >= target)
+            {
+                right = mid;
+            }
+            else
+            {
+                left = mid + 1;
+            }
+        }
+    }
+    return left;
+}
+static int upper_bound_ex(const int *arr, int n, int target, order_t order)
+{
+    int left = 0;
+    int right = n;
+
+    while (left < right)
+    {
+        int mid = left + (right - left) / 2;
+
+        if (order == ORDER_ASC)
+        {
+            if (arr[mid] <= target)
+            {
+                left = mid + 1;
+            }
+            else
+            {
+                right = mid;
+            }
+        }
+        else
+        {
+            if (arr[mid] > target)
+            {
+                right = mid;
+            }
+            else
+            {
+                left = mid + 1;
+            }
+        }
+    }
+    return left;
+}
+
+msStatus_t GetBinaryRange(const int *arr, int n, int target, int *start, int *end)
+{
+    if ((arr == NULL) || (start == NULL) || (end == NULL) || (n <= 0))
+    {
+        return MS_ERROR;
+    }
+
+    /* 정렬 방향 자동 감지 */
+    order_t order = detect_order(arr, n);
+
+    /* 모든 값이 동일한 경우 */
+    if (order == ORDER_UNKNOWN)
+    {
+        if (arr[0] == target)
+        {
+            *start = 0;
+            *end   = n - 1;
+            return MS_SUCCESS;
+        }
+        return MS_ERROR;
+    }
+
+    /* 범위 계산 */
+    int lb = lower_bound_ex(arr, n, target, order);
+    if (lb >= n || arr[lb] != target)
+    {
+        return MS_ERROR;
+    }
+
+    int ub = upper_bound_ex(arr, n, target, order);
+
+    *start = lb;
+    *end   = ub - 1;
+
+    return MS_SUCCESS;
+}
+

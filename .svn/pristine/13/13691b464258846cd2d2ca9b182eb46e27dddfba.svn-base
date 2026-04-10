@@ -1,0 +1,9 @@
+
+#ifndef EEP_M24M02A_H
+#define EEP_M24M02A_H
+
+#include "ms_main.h"
+
+
+#endif
+

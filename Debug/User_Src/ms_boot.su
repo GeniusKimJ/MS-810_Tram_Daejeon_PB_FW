@@ -1,0 +1,2 @@
+../User_Src/ms_boot.c:40:4:Boot_FlashWritePage64	16	static
+../User_Src/ms_boot.c:107:6:Boot_Function	8	static

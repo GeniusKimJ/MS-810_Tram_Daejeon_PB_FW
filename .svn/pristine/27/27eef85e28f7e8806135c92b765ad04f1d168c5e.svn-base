@@ -1,0 +1,54 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Humidity sensor)                                           			  *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                               		   *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               HUMI_sht3xdis.h
+\author             KKD
+\date               2025-11-24 
+\brief              Humidity sensor
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __HUMI_SHT3XDIS_H__
+#define __HUMI_SHT3XDIS_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define SHT3X_ADDR_A   (0x44 << 1)        // ADDR = LOW
+#define SHT3X_ADDR_B   (0x45 << 1)        // ADDR = HIGH
+
+// Single-shot, High repeatability, clock stretching disabled
+#define SHT3X_CMD_HIGHRPT_NOSTRETCH_MSB   0x24
+#define SHT3X_CMD_HIGHRPT_NOSTRETCH_LSB   0x00
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef struct {
+    float   fTempC;
+    float   fRh;
+    u8      u8CrcOk;
+    u8      u8Valid;
+
+	u16 	u16ErrStatus;
+}sHumiData;
+
+extern sHumiData g_sSht3x;
+
+
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+
+u8 		Humi_CalcCrc(u8 *pData, u8 len);
+u8  	Humi_Init(I2C_HandleTypeDef *hi2c, u8 addr);
+u8  	Humi_Read(sHumiData *pOut);
+void	Humi_Proc(void);
+
+#endif

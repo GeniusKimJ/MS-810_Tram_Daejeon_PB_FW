@@ -1,0 +1,67 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(battery thermal management)                                         *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_btms.h
+\author             KKD
+\date               2025-11-24 
+\brief              battery thermal management
+*********************************************
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_BTMS_H__
+#define __MS_BTMS_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_main.h"
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define BTMS_ERR_BLOW_OPEN          01
+#define BTMS_ERR_BLOW_SHORT         02
+#define BTMS_ERR_COND_OPEN          03
+#define BTMS_ERR_COND_SHORT         04
+#define BTMS_ERR_RT_OPEN            05
+#define BTMS_ERR_RT_SHORT           06 
+#define BTMS_ERR_ST_OPEN            07
+#define BTMS_ERR_SP_SHORT           08
+#define BTMS_ERR_PTC_HIGH_TEMP      09
+#define BTMS_ERR_PTC_IGBT           10
+#define BTMS_ERR_PTC_RELAY          11
+#define BTMS_ERR_PTC_CURRENT        12
+#define BTMS_ERR_HIGH_PRESS         13
+#define BTMS_ERR_LOW_PRESS          14
+#define BTMS_ERR_DEFROST            15
+#define BTMS_ERR_BTMS_LOW_VOLTAGE   16
+#define BTMS_ERR_BTMS_HIGH_VOLTAGE  17
+#define BTMS_ERR_COMP_ERROR         18
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum{
+    BTMS_PACKET_STX = 0,
+    BTMS_PACKET_LEN,
+    BTMS_PACKET_DATA,
+    BTMS_PACKET_CRC,
+    BTMS_PACKET_ETX,    
+    BTMS_PACKET_MAX
+}BTMS_PacketType;
+
+typedef enum{
+    BTMS_CMD_START =0,
+    BTMS_CMD_TARGET_TEMP,
+    BTMS_CMD_STATUS,
+    BTMS_CMD_TEMP_STATUS,
+    BTMS_CMD_HUMIDITY_STATUS,
+    BTMS_CMD_MAX
+}BTMS_CmdType;
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+void  BTMS_Init(void);
+
+#endif //__MS_BTMS_H__

@@ -1,0 +1,64 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_monitor.c
+\author             KKD
+\date               2025-11-21 
+\brief              모니터 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_monitor.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+#if 0
+/*Cell 288s*/
+void Monitor_CanTx_Cv(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos)
+{
+	u8 i  			= 0;
+	u8 txdat[8] 	= {0};
+	u16 txcv[4] 	= {4};
+	u32 idx 		= (u32)(0x1000+u8Pos); //0x1000~0x1113     288s                                              //KKD 2025-11-26 송신 ID 설정
+
+	memcpy(&txcv[0],RackPkt.TrayPkt[0].cell[0+(u8Pos*4)], 8);
+
+	for(i=0;i<4;i++){
+		txdat[0+(i*2)] = (u8)(txcv[i] << 8) & 0xff;
+		txdat[1+(i*2)] = (u8)(txcv[i] & 0xff) ;
+	}
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);																	//KKD 2025-11-26 Fifo 에 적재
+}
+
+void Monitor_CanTx_Th(Enum_Can_Type eCanType, Enum_McuCan_Type eMcuCan, u8 u8Pos)
+{
+	u8 i  			= 0;
+	u8 txdat[8] 	= {0};
+	u16 txcv[4] 	= {4};
+	u32 idx 		= (u32)(0x2000+u8Pos); //0x1000~0x1113														//KKD 2025-11-26 송신 ID 설정
+
+	memcpy(&txcv[0],(u16)RackPkt.TrayPkt[0].temp[0+(u8Pos*4)], 8);
+
+	for(i=0;i<4;i++){
+		txdat[0+(i*2)] = (u8)(txcv[i] << 8) & 0xff;
+		txdat[1+(i*2)] = (u8)(txcv[i] & 0xff) ;
+	}
+	Can_TxFifo(eCanType, idx, txdat, eMcuCan);																	//KKD 2025-11-26 Fifo 에 적재
+}
+
+#endif
+

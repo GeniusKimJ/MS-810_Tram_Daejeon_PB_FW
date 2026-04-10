@@ -1,0 +1,173 @@
+﻿/*********************************************************************************/
+//3   Function Name  : 
+/*----------------------------------------------------------------------------*//**
+\fn        
+/*********************************************************************************/
+//3   Function Name  : 
+/*----------------------------------------------------------------------------*//**
+\fn        
+\brief     DIP SW1[1:0] 에 해당하는 FLAG(n)을 넘겨주면 측정 CAN ID를 0x18FF505n 으로 설정
+\parm      
+\return    void
+\warning   -
+*//*******************************************************************************/
+/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Insultion detection seneor - CAN)	        	                   *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               IMD_gqimdu2.c
+\author             KKD
+\date               2025-11-21 
+\brief              ���������� ���� �ڵ�.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <IMD_gqimdu2.h>
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+sImdData g_sImdData;
+
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+
+
+
+static u32 s_u32ImdCanId = IMD_CAN_ID_MEAS_BASE;   // 0x18FF5050 (FLAG = 0)
+
+void IMD_Init(void)
+{
+    memset(&g_sImdData, 0, sizeof(g_sImdData));
+
+    g_sImdData.s8Temp_C    		= (-40);
+    g_sImdData.fTemp_C     		= (-40.0f);
+    g_sImdData.fRp_kOhm    		= (0.0f);
+    g_sImdData.fRn_kOhm    		= (0.0f);
+    g_sImdData.fRisoMin_kOhm	= (0.0f);
+    g_sImdData.fVb_V       		= (0.0f);
+    g_sImdData.bCommTimeout 	= (TRUE);         // 초기에는 미수신 상태
+}
+
+//DIP SW1[1:0] 에 해당하는 FLAG(n)을 넘겨주면 측정 CAN ID를 0x18FF505n 으로 설정
+void IMD_SetCanFlag(u8 u8Flag)
+{
+    u8Flag &= 0x03;                                                                 
+    s_u32ImdCanId = IMD_CAN_ID_MEAS_BASE + (u32)u8Flag;
+}
+
+u32 IMD_GetCanId(void)
+{
+    return s_u32ImdCanId;
+}
+
+//CAN Rx 콜백에서 GAS 센서와 동일한 방식으로 호출                                          
+void IMD_CanRxParser(sImdData *puImdData, const u8 *pu8CanRxData)
+{
+	// Status
+	puImdData->bWarnISO_R		= (pu8CanRxData[0] & (1U << 0)) ? TRUE : FALSE;				// BYTE 3 : Bit[1:0]
+	puImdData->bFaultISO_R		= (pu8CanRxData[0] & (3U << 0)) ? TRUE : FALSE;				// BYTE 3 : Bit[1:0]
+    puImdData->bLowVoltage    	= (pu8CanRxData[0] & (1U << 2)) ? TRUE : FALSE;				// BYTE 3 : Bit2
+    puImdData->bHighVoltage   	= (pu8CanRxData[0] & (1U << 3)) ? TRUE : FALSE;				// BYTE 3 : Bit3
+    puImdData->bGroundFault   	= (pu8CanRxData[0] & (1U << 4)) ? TRUE : FALSE;				// BYTE 3 : Bit4
+    puImdData->bNoNewEstimate 	= (pu8CanRxData[0] & (1U << 6)) ? TRUE : FALSE;				// BYTE 3 : Bit6
+
+	//Temp
+    puImdData->s8Temp_C  		= (int8_t)pu8CanRxData[1] - 40;                     			// scale=1, offset=-40
+    puImdData->u16Rp_kOhm		= (u16)((u16)pu8CanRxData[2] |((u16)pu8CanRxData[3] << 8));     // Little Endian
+    puImdData->u16Rn_kOhm		= (u16)((u16)pu8CanRxData[4] |((u16)pu8CanRxData[5] << 8));
+    puImdData->u16Vb_x10 		= (u16)((u16)pu8CanRxData[6] |((u16)pu8CanRxData[7] << 8));
+
+    //Conv
+    puImdData->fTemp_C   		= (float)puImdData->s8Temp_C;
+    puImdData->fRp_kOhm   		= (float)puImdData->u16Rp_kOhm;
+    puImdData->fRn_kOhm   		= (float)puImdData->u16Rn_kOhm;
+    puImdData->fRisoMin_kOhm 	= (puImdData->fRp_kOhm <= puImdData->fRn_kOhm) ? puImdData->fRp_kOhm : puImdData->fRn_kOhm;
+    puImdData->fVb_V      		= (float)puImdData->u16Vb_x10 * 0.1f;
+
+    // 수신 Check
+    puImdData->bCommTimeout 	= FALSE;
+}
+
+BOOL IMD_DiagnosicCheck(sImdData *puImdData)  
+{
+	if(puImdData->bWarnISO_R == TRUE)	{ puImdData->u16ErrStatus |= ((u8)1<<IErr_W_R500_Under_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_W_R500_Under_Type); }
+
+	if(puImdData->bFaultISO_R == TRUE)	{ puImdData->u16ErrStatus |= ((u8)1<<IErr_F_R100_Under_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_F_R100_Under_Type); }
+
+	if(puImdData->bLowVoltage == TRUE)	{ puImdData->u16ErrStatus |= ((u8)1<<IErr_Low_V_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_Low_V_Type); }
+
+	if(puImdData->bHighVoltage == TRUE)	{ puImdData->u16ErrStatus |= ((u8)1<<IErr_Max_V_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_Max_V_Type); }
+	
+	if(puImdData->bGroundFault == TRUE)	{ puImdData->u16ErrStatus |= ((u8)1<<IErr_GFD_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_GFD_Type); }
+
+	if(puImdData->bNoNewEstimate == TRUE) { puImdData->u16ErrStatus |= ((u8)1<<IErr_No_NewEstimates_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_No_NewEstimates_Type); }
+
+	if(puImdData->bCommTimeout == TRUE)	{ puImdData->u16ErrStatus |= ((u8)1<<IErr_CanRxTimeout_Type); }
+	else								{ puImdData->u16ErrStatus &= ~((u8)1<<IErr_CanRxTimeout_Type); }
+}
+
+//u32TimeoutMs : IMD 프레임 타임아웃 (예: 500ms)                                   
+void IMD_CanRx_Timeout(sImdData *puImdData)
+{
+    static u32 u32LastTime = 0;
+    u32 now = HAL_GetTick();
+
+    if ((now - u32LastTime) >= GAS_TIMEOUT_MS)
+    {
+        //if (g_sHallData.u8CommTimeout == TRUE){                                       //KKD 2025-12-01 Rx 최근 수신 체크(CAN_Rx_Done가 False 유지시 타입아웃 발생
+        //    g_sHallData.u8ErrStatus = TRUE;                                        	//KKD 2025-12-01 500ms 이상 미 수신시 Fault 발생
+        //}
+        puImdData->bCommTimeout = TRUE;                                             	//KKD 2025-12-01 Rx 체크 플래그 초기화
+        u32LastTime = now;
+    }
+}
+
+void IMD_Proc(void)
+{
+	if(g_bSenIcRxDone[SenIC_IMD_Type] == TRUE){
+		g_bSenIcRxDone[SenIC_IMD_Type] = FALSE;
+		IMD_CanRxParser(&g_sImdData,&g_u8SenIcRxData[SenIC_IMD_Type]);						
+	}
+	IMD_CanRx_Timeout(&g_sImdData);
+	IMD_DiagnosicCheck(&g_sImdData);
+
+}
+
+
+float IMD_GetRisoMin_kOhm(void)
+{
+    return g_sImdData.fRisoMin_kOhm;
+}
+
+float IMD_GetHvVoltage_V(void)
+{
+    return g_sImdData.fVb_V;
+}
+
+float IMD_GetTemperature_C(void)
+{
+    return g_sImdData.fTemp_C;
+}
+
+u16 IMD_GetErrStatus(void)
+{
+	return g_sImdData.u16ErrStatus;
+}
+
+

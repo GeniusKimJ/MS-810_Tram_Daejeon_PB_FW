@@ -1,0 +1,97 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_mvb.h
+\author             KKD
+\date               2025-11-21 
+\brief              MVB를 위한 헤더.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_MVB_H__
+#define __MS_MVB_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+
+#define MVB_RX_MAX    			512
+
+#define CMD_CHK_REDY			0x11
+#define CMD_SET_CYCL			0x21
+#define CMD_SET_PORT			0x31
+#define CMD_TX_MKDAT			0x61
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum {                                                                          //KKD 2025-11-26 수신 방식
+    MVB_MODE_POLLING = 0,
+    MVB_MODE_INTERRUPT
+} eMvbRxMode;
+
+#ifdef MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+typedef enum{
+    MVB_PACKET_START = 0,
+    MVB_PACKET_CMD,
+    MVB_PACKET_LEN,
+    MVB_PACKET_DATA,
+    MVB_PACKET_CRC,
+    MVB_PACKET_END,    
+    MVB_PACKET_MAX
+}MVB_PacketType;
+
+typedef enum{
+    MVB_STATE_OFF =0,
+    MVB_STATE_OFF_DELAY,
+    MVB_STATE_ON,
+    MVB_STATE_ON_DELAY,
+    MVB_STATE_INIT,
+    MVB_STATE_IDLE,
+    MVB_STATE_MAX
+}MVB_StateType;
+
+
+#endif //MVB_UPDATE
+
+typedef struct {
+    u8 u8RxDmaBuf[MVB_RX_MAX];
+    u8 u8RxDataFrameBuf[MVB_RX_MAX];
+    volatile BOOL bRxOk;
+    u16 u16PrevPos;
+#ifdef MVB_UPDATE    //2025-12-31   jkpark  MVB코드 수정.
+    MVB_PacketType ePacket;
+    MVB_StateType  eState;
+    u16 u16DataPos;
+    u16 u16DataLen;
+    u16 u16StateLen;
+#endif //MVB_UPDATE
+    eMvbRxMode eRxMode;
+} sMvbData;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern sMvbData g_sMvbData;
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+void MVB_Init(eMvbRxMode mode);
+void MVB_Receive_DMA_Poll(void);
+void MVB_RxData_FrameParser(u8 byte);
+void MVB_ProcessFrame(u8 *buf);
+void MVB_HandleCommand(u8 cmd, u8 *data, u8 len);
+void MVB_SendFrame(u8 cmd, u8 *data, u8 len);
+void MVB_Proc(void);
+
+
+
+
+
+#endif //__MS_MVB_H__

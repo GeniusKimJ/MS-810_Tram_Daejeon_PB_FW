@@ -1,0 +1,12 @@
+../User_Src/ms_relay.c:36:13:Rly_DelayCheck	0	static
+../User_Src/ms_relay.c:31:6:Relay_Init	0	static
+../User_Src/ms_relay.c:293:6:Relay_Control	0	static
+../User_Src/ms_relay.c:304:6:RlyCon_Feedback	0	static
+../User_Src/ms_relay.c:324:6:Relay_Diagnosic	0	static
+../User_Src/ms_relay.c:370:6:Relay_Start_BTMS	0	static
+../User_Src/ms_relay.c:380:6:Relay_Stop_BTMS	0	static
+../User_Src/ms_relay.c:391:6:Relay_Start_Main	0	static
+../User_Src/ms_relay.c:195:6:Relay_Status	8	static
+../User_Src/ms_relay.c:358:6:Relay_Proc	8	static
+../User_Src/ms_relay.c:398:6:Relay_Stop_Main	0	static
+../User_Src/ms_relay.c:406:4:Relay_Check_ErrStatus	0	static

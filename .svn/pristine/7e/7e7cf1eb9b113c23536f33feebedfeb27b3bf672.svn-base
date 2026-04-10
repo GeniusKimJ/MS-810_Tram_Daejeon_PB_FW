@@ -1,0 +1,6 @@
+../User_Src/RTC_mcp7940a.c:27:4:Bcd2Dec	16	static
+../User_Src/RTC_mcp7940a.c:31:4:Dec2Bcd	16	static
+../User_Src/RTC_mcp7940a.c:35:6:SetLocalTime	40	static
+../User_Src/RTC_mcp7940a.c:85:6:GetLocalTime	32	static
+../User_Src/RTC_mcp7940a.c:106:6:GetSocToMcp7940	32	static
+../User_Src/RTC_mcp7940a.c:184:6:SaveSocToMcp7940	32	static

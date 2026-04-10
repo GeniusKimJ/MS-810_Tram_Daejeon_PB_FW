@@ -1,0 +1,4 @@
+../User_Src/ms_main.c:67:7:GetCpuLoad	0	static
+../User_Src/ms_main.c:91:6:CpuLoadTest	0	static
+../User_Src/ms_main.c:101:6:ms_main	8	static,ignoring_inline_asm
+../User_Src/ms_main.c:271:6:dbg_qac	0	static

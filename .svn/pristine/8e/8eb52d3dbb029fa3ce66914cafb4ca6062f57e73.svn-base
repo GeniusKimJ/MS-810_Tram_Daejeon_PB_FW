@@ -1,0 +1,199 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_timer.c
+\author             KKD
+\date               2025-11-21 
+\brief              Timer 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+  2025-12-05     v0.02    jkpark Timer 타이머 관련 함수 추가. 
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_timer.h>
+#include "stm32f4xx_hal.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+#define TIMx                             TIM3
+#define TIMx_CLK_ENABLE                  __TIM3_CLK_ENABLE
+
+#define TIMx_POLLING_INTERVAL             5 /* in ms. The max is 65 and the min is 1 */
+#define TIMx_IRQn                        TIM3_IRQn
+/* Private variables ------------------------------------------------------------------------------*/
+SWTimerListType      timerElementList;
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+u32 DWT_Delay_Init(void) {
+	u8 	status = 0;
+	CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; 						// ~0x01000000;	Disable TRC
+	CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; 						// 0x01000000;	Enable TRC
+
+	DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; 									// ~0x00000001;	Disable clock cycle counter
+	DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; 									// 0x00000001;	Enable  clock cycle counter
+	DWT->CYCCNT = 0;														// Reset the clock cycle counter value
+
+	 __ASM __IO ("NOP");													// 3 NO OPERATION instructions
+	 __ASM __IO ("NOP");
+	 __ASM __IO ("NOP");
+
+	 if(DWT->CYCCNT > 0U) {
+		status = 0U;														// Check if clock cycle counter has started
+	 } else {
+		status = 1U; 														// clock cycle counter not started
+	 }
+
+	 return status;
+}
+
+/*******************************************************************************
+* Function Name  : TimerProcess
+* Description    : timer인터럽트 루틴. 1mS 마다 timerElementList에 등록된 시간을 확인하고 함수를 수행함.
+* Input          : timerElementList
+* Output         : 등록된 함수를 수행.
+* Return         : void
+*******************************************************************************/
+static char g_TimerFlag = MS_FALSE;
+void TimerProcess( void )
+{
+    int i;
+    int enableValue;
+
+    if( g_TimerFlag == MS_TRUE )return;
+    g_TimerFlag = MS_TRUE;
+
+    if( timerElementList.elementCount == 0 )return;
+//    GPIO_SetBits(GPIOE, GPIO_Pin_3);
+
+//==============================================================================
+//  Timer...
+//==============================================================================
+    for( i=0 ; i<SW_TIMER_MAX ; i++)
+    {
+        if(timerElementList.timerList[i].timerEnable == MS_ENABLE )
+        {
+            if(timerElementList.timerList[i].setCount != 0)
+            {
+                timerElementList.timerList[i].counter++;
+
+                if(timerElementList.timerList[i].counter >= timerElementList.timerList[i].setCount)
+                {
+                    enableValue = timerElementList.timerList[i].func();
+
+                    timerElementList.timerList[i].counter       =   0; 
+                    timerElementList.timerList[i].timerEnable   =   enableValue;
+                    if( enableValue == 0 ){
+                        timerElementList.elementCount--;
+                    }
+                }
+            }
+        }
+    }
+    
+    g_TimerFlag = MS_FALSE;
+//    GPIO_ResetBits(GPIOE, GPIO_Pin_3);
+}
+
+/********************************************************************************
+   Function Name  : TimerInit                                                    
+   Description    : 타이머 관련 초기화.
+   input          : 
+   output         : 
+   return         : 
+********************************************************************************/
+void TimerInit( void ){
+    memset( &timerElementList, 0x00, sizeof( timerElementList ));
+}
+
+/********************************************************************************
+   Function Name  : TimerAdd                                                    
+   Description    : Timer를 추가하는 함수.                              
+   input          : 동작할 간격(interval),동작할 함수(func), 등록된 TimerID(pElementID)
+   output         : interval간격으로 func를 동작하도록 timer 루틴에 추가한다.   
+   return         : 추가된 Timer ID.  
+********************************************************************************/
+msStatus_t TimerAdd( long interval, int (*func)(void), int *pElementID){
+    int iElementID = 0;
+
+    if(timerElementList.elementCount >= SW_TIMER_MAX-1){
+        return MS_E_TIMER_ELEMENT_FULL;
+    }
+
+    if( interval <= 0 ){
+        return MS_E_TIMER_UNVALUABLE_COUNT;
+    }
+
+    if( func == NULL ){
+        return MS_E_TIMER_UNVALUABLE_FUNCTION;
+    }
+
+    for( iElementID = 0 ; iElementID < SW_TIMER_MAX ; iElementID++ ){
+        if( timerElementList.timerList[ iElementID].timerEnable == MS_DISABLE ){
+            timerElementList.elementCount++;
+
+            timerElementList.timerList[ iElementID ].timerEnable  = MS_ENABLE;
+            timerElementList.timerList[ iElementID ].setCount     = interval*__1mS;
+            timerElementList.timerList[ iElementID ].func         = func ;
+            timerElementList.timerList[ iElementID ].counter      = 0;
+
+            if( pElementID != NULL ) *pElementID = iElementID;
+            return MS_SUCCESS;
+        }
+    }
+
+    return MS_E_TIMER_ELEMENT_FULL;
+}
+
+/********************************************************************************
+   Function Name  : TimerRestart                                                
+   Description    : Timer를 다시시작하는 함수.                     
+   input          : ?ㅼ ??? Timer ID(elementID)                             
+   output         : ?대?elementID? Count媛 0遺???ㅼ ?????               
+   return         :                                                  
+********************************************************************************/
+msStatus_t TimerRestart( int elementID ){
+
+    if(    timerElementList.timerList[elementID].setCount       == 0 
+        || timerElementList.timerList[elementID].timerEnable    == 0 ){
+        return MS_E_TIMER_UNUSED_ID;
+    }
+
+    timerElementList.timerList[elementID].counter      = 0;
+
+    return MS_SUCCESS;
+}
+
+/********************************************************************************
+   Function Name  : TimerDelete                                                
+   Description    : Timer를 삭제하는 간략한 함수.                    
+   input          : 삭제할 Timer ID(elementID)                                      
+   output         : 해당 elementID의 Timer를 삭제한다.
+   return         :                                                    
+********************************************************************************/
+msStatus_t TimerDelete( int elementID ){
+
+    if( timerElementList.timerList[elementID].timerEnable != 0 ){
+        timerElementList.elementCount--;
+        timerElementList.timerList[elementID].timerEnable  = 0;
+        timerElementList.timerList[elementID].setCount     = 0;
+        timerElementList.timerList[elementID].counter      = 0;
+        timerElementList.timerList[elementID].func         = 0;
+
+        if(timerElementList.elementCount < 0 ) timerElementList.elementCount = 0;
+    }else{
+        return MS_ERROR;
+    }
+    
+    return MS_SUCCESS;
+}
+

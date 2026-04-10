@@ -1,0 +1,108 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Contector Operating Sequence)                                       *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_relay.h
+\author             KKD
+\date               2025-11-21 
+\brief              Contector Sequence
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_RELAY_H__
+#define __MS_RELAY_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define F_OVER			(u32)(FCUVP|FPUVP|FDOCP|FCOTP|FDOTP|FCUTP|FDUTP|FCOMF)
+#define F_UNDR			(u32)(FCOVP|FPOVP|FCOCP|FCOTP|FDOTP|FCUTP|FDUTP|FCOMF)
+//#define F_ETC			(u32)()
+
+#define HV_STATUS_DONE							0x0F
+
+
+#define MPRE			(1<<RLY_MPRE_Type)
+#define MPCK			(1<<RLY_MPCK_Type)
+#define MNCK			(1<<RLY_MNCK_Type)
+
+#define BPRE			(1<<RLY_BPRE_Type)
+#define BPCK			(1<<RLY_BPCK_Type)
+#define BNCK			(1<<RLY_BNCK_Type)
+
+#define FDET			(u32)(F_OVER|F_UNDR)
+
+#define RLYONDLY		20
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum{
+	RLY_IDLE_Type			= 0,
+	RLY_MPRE_Type			= 1,
+	RLY_MPCK_Type			= 2,
+	RLY_MNCK_Type			= 3,
+	RLY_BPRE_Type			= 4,
+	RLY_BPCK_Type			= 5,
+	RLY_BNCK_Type			= 6,
+	RLY_MAX_Type
+}eMain_RelayCmd;
+
+
+typedef enum
+{
+	RERR_MPCK			= 0,
+	RERR_MNCK,
+	RERR_BPCK,
+	RERR_BNCK,
+	RERR_COMFAIL,
+	MAX_RERR
+}eRelayErr;
+
+
+#pragma pack(push,1)
+typedef struct
+{
+	u8		u8HvRly_Status;
+	u8		u8HvRly_Feedback;	
+	eRelayErr eHvRly_ErrStatus;
+	
+	u8		u8HvRly_M_Status;	
+	u8		u8HvRly_B_Status;	
+	u8		u8HvRly_Delay;
+	
+	s32		s32Hv_PvBvDiff;
+
+	BOOL 	bHvRly_MainOnDone;
+	BOOL 	bHvRly_BtmsOnDone;
+
+	BOOL 	bHvRly_DiffErr;
+	BOOL 	bHvRly_BtmsDetErr;
+	BOOL 	bHvRly_MainDetErr;
+	
+}sHvRelayStatus;
+
+extern sHvRelayStatus g_sRelayStatus;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+void	Relay_Init(void);
+void	Relay_01_Status(sHvRelayStatus *pRly);
+void	Relay_02_Control(sHvRelayStatus *pRly);
+void	Relay_03_Feedback(sHvRelayStatus *pRly);
+void	Relay_04_Diagnosic(sHvRelayStatus *pRly);
+void  Relay_Init(void);
+void	Relay_Proc(void);
+
+void Relay_Start_BTMS(void);
+void Relay_Stop_BTMS(void);
+void Relay_Start_Main(void);
+void Relay_Stop_Main(void);
+
+#endif //__MS_RELAY_H__

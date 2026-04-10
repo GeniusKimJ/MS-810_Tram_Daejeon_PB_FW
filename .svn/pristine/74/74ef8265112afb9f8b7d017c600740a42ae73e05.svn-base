@@ -1,0 +1,261 @@
+/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2026-01-12                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2026 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_uart.h
+\author             jkpark
+\date               2026-01-12 
+\brief              Uart관련 헤더.
+*********************************************
+* History:
+* 2026-01-12     v0.01    jkpark    Create
+*==================================================================================================*/
+#ifndef __MS_UART_H__
+#define __MS_UART_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_main.h"
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define SOH					0x01U		// Start of header
+#define STX					0x02U		// Start of text
+#define ETX					0x03U		// End of text
+#define EOT					0x04U		// End of transmission
+//#define CR				'\r'		// 0x0D Carriage return
+#define LF					'\n'		// 0x0A Line feet
+#define ACK					0x06U		// Acknowledge
+#define NAK					0x15U		// Not Acknowledge
+
+#define CMD_BOOT			0x0BU		// Boot Mode
+#define CMD_REQ				0x10U		// Request Slave Data by Master
+#define CMD_BMU				0x11U		// Request Master Data by Host
+#define CMD_CMU				0x12U		// Request Slave Data by Host
+#define CMD_RTC				0x13U		// RTC Local Time Setting
+#define CMD_CAL				0x17U		// Calibration BMS
+#define CMD_ESC				0x18U		// Escape test routine
+#define CMD_ORDER			0x19U		// Manual Mode : mklee180906
+#define CMD_MNM				0x1BU		// Manual Mode
+#define CMD_EEP				0x1EU		// EEPROM
+#define CMD_DETECT  0x1DU				// Det_Occur Setting
+
+
+#define SCMD_BOOT_START		0xB1U		// Boot Start
+#define SCMD_BOOT_SEND		0xB2U		// Boot Send
+#define SCMD_BOOT_END		0xB3U		// Boot End
+#define SCMD_BOOT_RTY		0xB4U		// Boot Retry
+/*
+#define	NCV					(SNCV*NSLV)	// Total Cell Num
+#define	NTH					(SNTH*NSLV)	// Total Temperature Num
+#define	NTHM				(1U)		// V102 TEMP ���� ����
+#define	NSLV				(5U)		// Slave Count
+
+#define SNCV				(5U)		// Slave Cell V Count
+#define SNTH				(1U)		// Slave Cell T Count
+*/
+#define NRACK				(1)
+#define NMAST				(NRACK + 1)
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+#pragma pack(push,1)
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8		soh;						// 1
+	u8		stx;						// 1	
+	u16 	len;						// 2 Data length
+	u8		cmd;						// 1
+	u8		id;							// 1
+	u8		scmd;						// 1
+	u8		mode;						// 1 8 
+	u8		data[4+4+64+64];			// 136 144 Receive data
+	u8		reserve[8];					// 8 152 ChkSum(2),ETX(1), EOT(1)
+} Pkt_Uart1_Rxd;
+
+
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8	ack;
+	u8	stx;
+	u16	len;						// Data length
+	u8	cmd;						// command
+	u8	id;							// Id
+	u8	scmd;
+	u8	mode;
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_Txd;
+
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8	ack;
+	u8	stx;
+	u16	len;							// Data length
+	u8	cmd;							// command
+	u8	id;								// Id
+	u8	scmd;
+	u8	mode;
+	u32	total_page_cnt;
+	u32	total_checksum;
+	u16	fw_ver;
+	u8 	mfr_year;
+	u8	mfr_month;
+	u8	mfr_day;
+	u16	mfr_sn;
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_TxBootEnd;
+
+
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8	ack;							// 1
+	u8	stx;							// 2
+	u16	len;							// 4 Data length
+	u8	cmd;							// 5 command,
+	u8	id;								// 6 Id
+	u8	scmd;							// 7
+	u8	mode;							// 8
+
+	u8	flagbmu[8];						//	9~16
+
+	s32	i_mst;							// 20 Current(1mA Unit)
+	s16	temp[NTH];						// 22	v
+	u32	packin;							// 26	v
+	u32	packout;						// 30	
+
+	u16	aux;							// 32	v
+	u16	soc;							// 34 state of charge 	v
+	u8 	Mf_year;						// 35
+	u8 	Mf_month;						// 36
+	u8 	Mf_day;							// 37
+	u16	sr_num;							// 39
+	s8	rtc[7];							// 40~46  Local Time(RTC)
+
+	u16	chksum;							// 48
+	u8	etx;							// 49
+	u8	eot;							// 50
+} Pkt_Uart1_Bmu;
+
+//typedef struct __attribute__((__packed__)) {	//288byte
+typedef struct {						//288byte
+
+	u8	ack;
+	u8	stx;
+	u16	len;							// Data length
+	u8	cmd;							// command
+	u8	id;								// Id
+	u8	scmd;
+	u8	mode;
+
+	u16	reserve[2];						// reserve 4 byte
+
+	u32	fbalance;						// 4 balancing flg
+	u16	fid;							// 2 slvid
+	u8	fafecom;						// 1 slvid
+	u8	fslvsts;						// 1 LTC COM OK/NG
+
+	s32	i_mst;							// Current(1mA Unit)
+	s16	temp[NTH];
+	u32	vpack;
+	u16	cell[NCV];						//288
+	u16	cellir[NCV];
+
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_Cmu;
+
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8	ack;
+	u8	stx;
+	u16	len;							// Data length
+	u8	cmd;							// command
+	u8	id;								// Id
+	u8	scmd;
+	u8	mode;
+
+	u8	eepdata[64];					// reserve 4 byte
+
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_Eep;
+
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8	ack;
+	u8	stx;
+	u16	len;							// Data length
+	u8	cmd;							// command
+	u8	id;								// Id
+	u8	scmd;
+	u8	mode;
+	s32	data[4];						// Receive data
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_Cal;
+
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+	u8	ack;
+	u8	stx;
+	u16	len;							// Data length
+	u8	cmd;							// command
+	u8	id;								// Id
+	u8	scmd;
+	u8	mode;
+	s32	data[4];						// Receive data
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_Mnl;						// manual mode
+//typedef struct __attribute__((__packed__)) {
+typedef struct {
+
+	u8	ack;
+	u8	stx;
+	u16	len;							// Data length
+	u8	cmd;							// command
+	u8	id;								// Id
+	u8	scmd;
+	u8	mode;
+	u16	chksum;
+	u8	etx;
+	u8	eot;
+} Pkt_Uart1_Det;
+#pragma pack(pop)
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern u8	Tx1UartBuf[200];
+extern u8	Rx1UartBuf[sizeof(Pkt_Uart1_Rxd)];
+extern u8	UartRx1Cnt;
+extern u8 	Rx1DMABuf[sizeof(Pkt_Uart1_Rxd)];
+extern u8 	fRcvUart1Boot;
+extern u8	fMnbalstart;
+extern u8	fMnrlystart;
+extern u8	mnrly;
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+void 	Uart_GetRx1DmatoUartBuf(void);
+u8		Uart_ChkUartRx1Dma(void);
+
+
+
+
+#endif //__MS_UART_H__
+

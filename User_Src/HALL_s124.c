@@ -1,0 +1,111 @@
+﻿/*=================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(HALL sensor s124 -adc )	        	                               *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025. 11. 20                                                                *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               HALL_s124.c
+\author             KKD
+\date               2025-11-21 
+\brief              HALL sensor(Mcu Adc1_Ch10) - BTMS Current
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <HALL_s124.h>
+/* Private define -----------------------------------------------------------------------------------*/
+
+
+/* Private macro -----------------------------------------------------------------------------------*/
+/* Private typedef ----------------------------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------------------------------*/
+/* Private function prototypes ---------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+void HALL_s124_InitGain(void) 
+{
+	for(u8 k = 0U; k < 4U; k++) {
+		RatPI[k] = (float)1.0;
+		GabPI[k] = (float)0.0;
+		RatPV[k] = (float)1.0;
+		GabPV[k] = (float)0.0;
+	}
+	RatAX = (float)1.;
+	GabAX = (float)0.;
+}
+
+
+void HALL_s124_GetCurrent(void) 
+{
+	static unsigned char	Cnt1Sec  = (1000/50)-1;
+	static s32	iResultCurr = 0;
+	static s32	Sum1SecPi  	= 0;
+	static s32 	i32curr[4] 	= {0,};
+	double 		d64_buf[2] 	= {0,};
+	s32 		i32_lo		= 0;
+	s32 		i32_hi		= 0;
+	s32 		i32diff 	= 0;
+	s32			movavghi	= 0;
+	s32			movavglo	= 0;
+	
+	i32_lo = (s32)ADC_GetStmAdc15bit(ID_ADIN10_PIL);
+	i32_lo -= OFFSETL;
+	i32_hi = (s32)ADC_GetStmAdc15bit(ID_ADIN11_PIH);
+	i32_hi -= OFFSETL;
+	
+	movavglo = Proc_MovAvg(i32_lo,MOV_CURR_LO);
+	movavghi = Proc_MovAvg(i32_hi,MOV_CURR_HI);
+
+	d64_buf[0] = (double)movavglo;																														//law curr L
+	d64_buf[1] = d64_buf[0] * CONSTPIL;
+	DataPIL = (s32)d64_buf[1];
+
+	d64_buf[0] = (double)movavghi;																														//law curr H
+	d64_buf[1] = d64_buf[0] * CONSTPIH;
+	DataPIH = (s32)d64_buf[1];
+
+	i32diff 		= (s32)(double)((double)DataPIL - (double)GabPI[ICHGL]);
+	i32curr[ICHGL]	= (s32)(double)((double)i32diff / (double)RatPI[ICHGL]);
+	i32diff 		= (s32)(double)((double)DataPIL - (double)GabPI[IDCHL]);
+	i32curr[IDCHL] 	= (s32)(double)((double)i32diff / (double)RatPI[IDCHL]);
+	i32diff 		= (s32)(double)((double)DataPIH - (double)GabPI[ICHGH]);
+	i32curr[ICHGH] 	= (s32)(double)((double)i32diff / (double)RatPI[ICHGH]);
+	i32diff 		= (s32)(double)((double)DataPIH - (double)GabPI[IDCHH]);
+	i32curr[IDCHH] 	= (s32)(double)((double)i32diff / (double)RatPI[IDCHH]);
+
+	if((i32curr[ICHGL] < (ZEROCURR)) && (i32curr[IDCHL] > (-ZEROCURR))){		
+		iResultCurr = 0;																																// blind current
+	}else{																																				// high single Range<70A -> 0500~800mA offset
+		if((i32curr[ICHGL] >= 0) && (i32curr[ICHGL] < 71000))			{iResultCurr = i32curr[ICHGL];}
+		else if((i32curr[IDCHL]	> (-71000)) && (i32curr[IDCHL] < 0))	{iResultCurr = i32curr[IDCHL];}
+		else if((i32curr[ICHGH]	>= 69000))								{iResultCurr = i32curr[ICHGH];}
+		else if((i32curr[IDCHH]	<= (-69000)))							{iResultCurr = i32curr[IDCHH];}
+	}
+	
+	if(labs(iResultCurr) > DHABS124_MAX)	{iResultCurr = DHABS124_MAX;}
+	
+#ifdef ENMN
+	if(g_sMn.mn_set_curr == 0){
+#endif
+		RackPkt.pi[IREAL] = iResultCurr;
+#ifdef ENMN
+	}
+#endif
+
+	Sum1SecPi += RackPkt.pi[IREAL];
+	if(++Cnt1Sec >= (u8)(1000U/100U)) {																												// 1sec avg, per 500ms
+		RackPkt.pi[I1SEC] = Sum1SecPi / (s32)(1000U/100U);																								// 20
+		Sum1SecPi = 0;
+		Cnt1Sec = 0;
+	}
+}
+//mode == 1 : charge low;
+//mode == 2 : charge high;
+//mode == 3 : discharge low;
+//mode == 4 : discharge high;
+//ori
+

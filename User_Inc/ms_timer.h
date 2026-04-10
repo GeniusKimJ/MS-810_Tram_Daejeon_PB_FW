@@ -1,0 +1,68 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_timer.h
+\author             KKD
+\date               2025-11-21 
+\brief              Timer를 위한 헤더.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef MS_TIMER_H
+#define MS_TIMER_H
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_main.h"
+#include "AFE_BasicConfig.h"
+
+/* Exported define ---------------------------------------------------------------------------------*/
+/* Exported macro ----------------------------------------------------------------------------------*/
+#define SW_TIMER_MAX        7
+#define TIMx_PRESCALER_1MS  6-1
+#define TIMx_PERIOD_1MS     6000                                                              /*jkpark2 2007-12-13 타이머의 ch별로는 Peroid를 변경할 수 없다.*/
+#define MAX_SYSTICK		100		// 1 = 1ms
+#define     T1MS           1                                    //jkpark 2025-12-05 Timer를 1mS보다 빠른 타이머에 배치할 경우 그에 맞게 조절.
+
+/* Exported typedef --------------------------------------------------------------------------------*/
+    
+typedef struct{
+    char                timerEnable;
+    long                setCount;
+    long                counter;
+    msStatus_t          (*func)(void);
+}SWTimerStructType;
+
+typedef struct{
+    int                 elementCount;
+    SWTimerStructType   timerList[SW_TIMER_MAX];    
+}SWTimerListType;
+
+
+/* Exported macro ------------------------------------------------------------*/
+/* Exported functions ------------------------------------------------------- */
+void TimerProcess(void);
+msStatus_t TimerAdd( long interval, msStatus_t (*func)(void), int *pElementID);
+msStatus_t TimerRestart(int elementID);
+msStatus_t TimerDelete(int elementID);
+
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+u32 DWT_Delay_Init(void);
+
+
+void Delay_us(volatile u32 microseconds);
+void Delay_ms(volatile u32 milliseconds);	// delay_ms
+u32 GetTick_us(void);
+
+extern u8	g_f1ms;
+extern u8	g_f10ms;
+
+
+#endif //__MS_TIMER_H__

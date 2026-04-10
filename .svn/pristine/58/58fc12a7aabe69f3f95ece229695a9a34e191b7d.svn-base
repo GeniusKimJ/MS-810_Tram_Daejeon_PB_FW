@@ -1,0 +1,345 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P((bms process(V/C/T Cal or Calibration)))                            *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_process.h
+\author             KKD
+\date               2025-11-24 
+\brief              (bms process(V/C/T Cal or Calibration))
+*********************************************
+
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_process.h"
+#include "ms_rs232_mon.h"
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+
+
+void Proc_Bms_Init(void)
+{
+/*GPIO*/
+	Gpio_Init();
+
+	/*COMM*/
+	Can_Init();
+	Uart1_Init();
+  //MVB_Init(MVB_MODE_POLLING);                                          //KKD 2025-11-26 DMA 폴링모드 시작
+  //BTMS_Init();
+
+	/*SENSOR*/
+	HUMI_Init();
+	HALL_Init();
+	IMD_Init();
+	GAS_Init();
+	Fire_Init();
+
+	/*ADC*/
+  ADC_InitAll();
+	SOC_Init();
+	
+	/*CV TH*/
+	Adbms6815_Init();
+	
+	/*CONTECTOR*/	
+	Relay_Init();
+	
+	/*EEP*/
+	Eep_ReadSysInfo();
+	EEP_ReadCalData();
+}
+
+void Proc_Calcul_CvTh(Pkt_Rack *pBmsData)
+{
+	s16	max = 0, min = 0;
+	u8	cnt 	= 0;
+	u8	min_num	= 0;
+	u8	max_num	= 0;
+	s32	avgth	= 0;
+	u32	avgsum	= 0;
+	u32	u32_buf	= 0;
+
+    memcpy(pBmsData->TrayPkt[0].cell,&g_sAd6815Data.u16Cv,sizeof(g_sAd6815Data.u16Cv));
+    memcpy(pBmsData->TrayPkt[0].temp,&g_sAd6815Data.s16Th,sizeof(g_sAd6815Data.s16Th));
+
+	avgth = 0;
+	max = (s16)-32768;
+	min = (s16)32767;
+	for(cnt = 0; cnt < (NTH); cnt++) {
+		if(pBmsData->TrayPkt[0].temp[cnt] > max) {
+			max = pBmsData->TrayPkt[0].temp[cnt];
+			max_num = cnt;
+		}
+		if(pBmsData->TrayPkt[0].temp[cnt] < min) {
+			min = pBmsData->TrayPkt[0].temp[cnt];
+			min_num = cnt;
+		}
+		avgth += pBmsData->TrayPkt[0].temp[cnt];
+	}
+	pBmsData->maxth	= max;
+	pBmsData->maxth	= (u8)(max_num+1U);
+	pBmsData->minth	= min;
+	pBmsData->minth	= (u8)(min_num+1U);
+	//pBmsData->avgth  = (s16)avgth/(s16)(MAXNTH-2U);
+	pBmsData->avgth 	= (s16)avgth/(s16)(NTH);
+	pBmsData->diffth	= max-min;
+	
+	avgsum	= 0;
+	max		= 0;
+	min		= 32767;
+	for(cnt = 0; cnt < NCV; cnt++) {
+		if(pBmsData->TrayPkt[0].cell[cnt] > (u32)max) {
+			max = (s16)pBmsData->TrayPkt[0].cell[cnt];
+			max_num = cnt;
+		}
+		if(pBmsData->TrayPkt[0].cell[cnt] < (u32)min) {
+			min = (s16)pBmsData->TrayPkt[0].cell[cnt];
+			min_num = cnt;
+		}
+		avgsum += pBmsData->TrayPkt[0].cell[cnt];
+	}
+	pBmsData->maxcv	= (u16)max;
+	pBmsData->maxcvn	= max_num+1U;
+	pBmsData->mincv	= (u16)min;
+	pBmsData->mincvn	= min_num+1U;
+	pBmsData->sumcv	= avgsum;
+	pBmsData->pv[PVINP]= RackPkt.sumcv;
+	
+	u32_buf			= avgsum/(u32)(NCV);
+	pBmsData->avgcv	= (u16)(u32_buf);
+	pBmsData->diffcv	= max-min;
+}
+
+s32 Proc_MovAvg(s32 u32Data, eMovAvg ePos){
+	static s32	s_lawbuff[MAX_MOV][MOVCNT] = {0};
+	static u8	s_first[MAX_MOV]	= {0};
+	static u8	s_movcnt[MAX_MOV] 	= {0};
+	static u8	s_movpos[MAX_MOV] 	= {0};
+	s32 		movsum[MAX_MOV]		= {0};
+	s32 		movavg[MAX_MOV]		= {0};
+	u8			i = 0;
+	
+	if(s_first[ePos] == 0U){
+		s_first[ePos] = 1;
+		for(i=0;i<s_movcnt[ePos];i++){
+			s_lawbuff[ePos][i] = u32Data;
+		}
+	}else{
+		s_lawbuff[ePos][s_movpos[ePos]] = u32Data;
+	}
+
+	if(++s_movpos[ePos] >= (u8)MOVCNT){
+		s_movpos[ePos] = 0;
+	}
+	if(++s_movcnt[ePos] >= (u8)MOVCNT){
+		s_movcnt[ePos] = (u8)MOVCNT;
+	}
+
+	for(i=0;i<s_movcnt[ePos];i++){
+		movsum[ePos] += s_lawbuff[ePos][i];
+	}
+
+	if(s_movcnt[ePos] == 0U){
+		movavg[ePos] = 0;
+	}else{
+		movavg[ePos] = (movsum[ePos]/(s32)s_movcnt[ePos]);
+	}
+
+	return movavg[ePos];
+}
+
+void Proc_CellBalance(s32 pi) {
+	u8	num;
+	static u8		DelayBalO[NCV];
+	static u8		DelayBalR[NCV];
+	static u32		bal = 0U;
+
+	if((-2000 < pi) && (pi < 10000)) {		// -2.000A ~ 10.000A
+		for(num = 0; num < NCV; num++) {
+			if((RackPkt.TrayPkt[0].cell[num] >= UBMAX)||((RackPkt.TrayPkt[0].cell[num] >= UBMIN)&&(RackPkt.TrayPkt[0].cell[num] >= (RackPkt.mincv+UBOPR)))) {
+				if((++DelayBalO[num] >= DLYBALO)) {
+					bal |= (1UL<<num);
+					--DelayBalO[num];
+				}
+			} else {
+				DelayBalO[num] = 0U;
+			}
+
+			if((RackPkt.TrayPkt[0].cell[num] < UBMAX)&&((RackPkt.TrayPkt[0].cell[num] < UBMIN)||(RackPkt.TrayPkt[0].cell[num] < (RackPkt.mincv+UBSTP)))) {
+				if(++DelayBalR[num] >= DLYBALR) {
+					bal &= ~(1UL<<num);
+					--DelayBalR[num];
+				}
+			} else {
+				DelayBalR[num] = 0U;
+			}
+		}
+	} else {
+		for(num = 0; num < NCV; num++) {
+			DelayBalO[num] = 0U;
+			DelayBalR[num] = 0U;
+		}
+	}RackPkt.TrayPkt[0].fbalance = bal;
+}
+void Proc_Io(void)
+{
+	Gpio_Led();
+	Gpio_Fault_Out();
+	Gpio_Ch_In();
+	Gpio_Hv_In();
+}
+void Proc_Afe(void)
+{
+	
+	if(g_u8CanDbgStatus == TRUE) {
+		g_sAd6815Data.eComDir = ComDir_B_Type; 
+	}else{
+		g_sAd6815Data.eComDir = ComDir_A_Type; 
+	}
+
+	Adbms6815_Cal_AfePos(g_sAd6815Data.eComDir,WR_WR_Type);
+	Adbms6815_NorCell_Proc();
+	Adbms6815_NorTh_Proc();
+}
+
+void Proc_SensorCheck(void)
+{
+	IMD_Proc();
+	HALL_Proc();
+	Fire_Proc();
+	HUMI_Proc();
+	GAS_Proc();
+}
+void Proc_Soc_Soh(Pkt_Rack *pBmsData)
+{
+	SOC_CycleCount(pBmsData->pi[IREAL],pBmsData->ratefullcap);
+	SOC_StateOfHealth(pBmsData->cyccnt);
+}
+
+
+void Proc_Check_Status(Pkt_Rack *pBmsData)
+{
+	u16	fsts = 0U;
+
+	pBmsData->fbmssts = fsts;
+
+}
+
+void Proc_Check_CommStatus(Pkt_Rack *pBmsData)
+{
+	
+}
+
+void Proc_EepSave(void)
+{
+	EEP_SaveNormalData();		//savedata1
+	EEP_SaveFaultData();		//savedata2
+}
+
+void Proc_Adc(Pkt_Rack *pBmsData)
+{
+	ADC1_Ch0_GetAd24V();
+	ADC1_Ch1_GetAd13V();
+	ADC1_Ch2_GetAd5V0();
+	ADC1_Ch3_GetAd3V3();
+	ADC1_Ch10_GetPIL();
+}
+
+void Proc_Detection(Pkt_Rack *pBmsData)
+{
+	pBmsData->falm = Alarm_Occur();
+	pBmsData->falm = Alarm_Release();
+	pBmsData->falm = Det_Occur();
+	pBmsData->falm = Det_Release();
+}
+
+void Proc_Current(Pkt_Rack *pBmsData)
+{
+	/* HALL CAB1500 */
+	if(g_bSenIcRxDone[SenIC_HALL_Type] == TRUE){
+		g_bSenIcRxDone[SenIC_HALL_Type] = FALSE;
+		HALL_CanRxParsing(&g_sHallData, g_u8SenIcRxData[SenIC_HALL_Type] );              																//KKD 2025-11-24 Get Current
+	}
+	HALL_CanRx_TimeoutCheck(&g_sHallData);                                              																//KKD 2025-12-02 CAN Rx Alive Check
+	HALL_DiagnosicCheck(&g_sHallData);      
+
+	/* HALL S124 */
+	HALL_s124_GetCurrent();
+}
+
+void Proc_Relay(void)
+{
+	Relay_01_Status(&g_sRelayStatus);
+	Relay_02_Control(&g_sRelayStatus);
+	Relay_03_Feedback(&g_sRelayStatus);
+	Relay_04_Diagnosic(&g_sRelayStatus);
+}
+
+void Proc_Comm(void)
+{
+	Uart1_Rx1Function();
+
+}
+
+//KKD 26-01-06	ext can Manual test
+void Proc_MenualTest(void)
+{
+	//(KKD) Init set v/t 
+		memset(g_sMn.mn_cv,(u16)3800,sizeof(g_sMn.mn_cv));
+		memset(g_sMn.mn_th,(s16)250,sizeof(g_sMn.mn_th));
+
+	//(KKD) Volt Return when range is exceeded
+		if(g_sMn.mn_set_cvpos < 0 && g_sMn.mn_set_cvpos > NCV) 				{return;}
+		if(g_sMn.mn_set_cv < (u16)1500 && g_sMn.mn_set_cv > (u16)5000) 		{return;}
+
+		if(g_sMn.mn_set_cvpos < NCV){
+			g_sMn.mn_cv[g_sMn.mn_set_cvpos] = g_sMn.mn_set_cv;
+		}else{
+			memset(g_sMn.mn_cv,g_sMn.mn_set_cv,sizeof(g_sMn.mn_cv));
+		}
+
+	//(KKD) Temp Return when range is exceeded
+		if(g_sMn.mn_set_thpos < 0 && g_sMn.mn_set_thpos > NTH) 				{return;}
+		if(g_sMn.mn_set_th <(s16)(-400) && g_sMn.mn_set_th > (s16)(900))	{return;}
+
+		if(g_sMn.mn_set_thpos < NTH){
+			g_sMn.mn_th[g_sMn.mn_set_thpos] = g_sMn.mn_set_th;
+		}else{
+			memset(g_sMn.mn_th,g_sMn.mn_set_th,sizeof(g_sMn.mn_th));
+		}
+
+	//(KKD) To be implemented...
+		//curr
+		//soc
+		//pv
+		//relay test
+		g_sRelayStatus.u8HvRly_Status = g_sMn.mn_set_rlysts;
+		GPIO_DOut_MTOP_RLY(g_sRelayStatus.u8HvRly_Status & (MPCK));
+		GPIO_DOut_MBTM_RLY(g_sRelayStatus.u8HvRly_Status & (MNCK));
+		GPIO_DOut_MPRE_RLY(g_sRelayStatus.u8HvRly_Status & (MPRE));	//main
+
+		GPIO_DOut_BTOP_RLY(g_sRelayStatus.u8HvRly_Status & (BPCK));
+		GPIO_DOut_BBTM_RLY(g_sRelayStatus.u8HvRly_Status & (BNCK));
+		GPIO_DOut_BPRE_RLY(g_sRelayStatus.u8HvRly_Status & (BPRE));
+
+
+	// (KKD) balance test
+		 g_sMn.mn_set_bal_flag[g_sMn.mn_set_bal_afe_pos][g_sMn.mn_set_bal_slv_pos] = (1<< g_sMn.mn_set_bal_cell_pos);
+	
+}
+

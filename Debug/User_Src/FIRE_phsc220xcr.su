@@ -1,0 +1,5 @@
+../User_Src/FIRE_phsc220xcr.c:30:6:Fire_Init	0	static
+../User_Src/FIRE_phsc220xcr.c:35:6:Fire_OpenShortCheck	0	static
+../User_Src/FIRE_phsc220xcr.c:70:6:Fire_Proc	8	static
+../User_Src/FIRE_phsc220xcr.c:87:6:Fire_Open	0	static
+../User_Src/FIRE_phsc220xcr.c:96:6:Fire_Short	0	static

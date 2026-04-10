@@ -1,0 +1,548 @@
+﻿
+/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_det.h
+\author             KKD
+\date               2025-11-21 
+\brief              DET를 위한    헤더.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_DET_H__
+#define __MS_DET_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+
+//////////////////////////////////////////////////////////////////////////
+// fdet[0]
+#define	FCOVP		(u32)((1UL<<0))					// Cell over voltage Protection detect
+#define	FCUVP		(u32)((1UL<<1))					// Cell under voltage Protection detect
+#define	FPOVP		(u32)((1UL<<2))					// Pack over voltage Protection detect
+#define	FPUVP		(u32)((1UL<<3))					// Pack under voltage Protection detect
+#define	FCOCP		(u32)((1UL<<4))					// Charge over current Protection detect
+#define	FDOCP		(u32)((1UL<<5))					// Discharge over current Protection detect
+#define	FOC2P		(u32)((1UL<<6))					// Discharge over current 2'nd Protection detect
+//#define	FSTCP		(u32)((1UL<<7))				// Discharge over current Protection detect
+
+// fdet[1]
+#define	FCOTP		(u32)((1UL<<8))					// Charge over TMEP Protection detect
+#define	FCUTP		(u32)((1UL<<9))					// Charge under TMEP Protection detect
+#define	FDOTP		(u32)((1UL<<10))					// Discharge over TMEP Protection detect
+#define	FDUTP		(u32)((1UL<<11))					// Discharge under TMEP Protection detect
+#define	FIMBP		(u32)((1UL<<12))					// Cell imbalance Fault Detection
+#define FCOMF		(u32)((1UL<<13))					// TCMS Comm Fail Detection > 5s
+//#define	FCKP		(u32)((1UL<<13))				// Ck Check Fault detect
+#define	FPSCP		(u32)((1UL<<15))					// FET Short Fault Detection
+
+// fdet[2]
+//#define	FVMSF		(u32)((1UL<<16))				// Cell VOLT Measurement Fault Detection
+//#define	FIMSF		(u32)((1UL<<17))				// CURR Measurement Fault Detection
+//#define	FTMSF		(u32)((1UL<<18))				// TEMP Measurement Fault Detection
+//#define	FTRLF		(u32)((1UL<<19))				// Top Relay Fault Detection
+//#define	FBRLF		(u32)((1UL<<20))				// Bottom Relay Fault Detection
+//#define	FPRLF		(u32)((1UL<<21))				// Pre-charge Relay Fault Detection
+#define	FFUSP			(u32)((1UL<<22))				// Fuse Fault Detection
+//#define	FADMF		(u32)((1UL<<23))				// AD Measurement Fault Detection
+
+// fdet[3]
+#define	FRTMF		(u32)((1UL<<24))					// Reference TEMP Measurement Fault Detection
+
+#define TIME_UNIT	(100U)						    		// 100msec
+
+
+#define	EN_ORIDET		1
+
+#if EN_ORIDET 
+
+#define	DOFETCONDITION		(u32)(FCUVP|FPUVP|FDOCP|FOC2P|FSTCP|FDOTP|FDUTP|FIMBP)//|FAOVP|FAUVP|FIMBP|FVMSF|FIMSF|FTMSF|FPSCP|FRTMF)
+#define	COFETCONDITION		(u32)(FCOVP|FPOVP|FCOCP|FCOTP|FCUTP|FIMBP)//FSTCP|FAOVP|FAUVP|FIMBP|FVMSF|FIMSF|FTMSF|FPSCP|FRTMF)
+
+
+// falm[0]
+#define	FCOVA		(u16)(0x0001)						// Cell over voltage Protection detect
+#define	FCUVA		(u16)((1UL<<1))					// Cell under voltage Protection detect
+#define	FPOVA		(u16)((1UL<<2))					// Pack over voltage Protection detect
+#define	FPUVA		(u16)((1UL<<3))					// Pack under voltage Protection detect
+#define	FCOCA		(u16)((1UL<<4))					// Charge over current Protection detect
+#define	FDOCA		(u16)((1UL<<5))					// Discharge over current Protection detect
+#define	FOC2A		(u16)((1UL<<6))					// Discharge over current 2'nd Protection detect
+//#define	FSTCA		(u16)((1UL<<7))				// Discharge over current Protection detect
+
+// falm[1]
+#define	FCOTA		(u16)((1UL<<8))					// Charge over TMEP Protection detect
+#define	FCUTA		(u16)((1UL<<9))					// Charge under TMEP Protection detect
+#define	FDOTA		(u16)((1UL<<10))					// Discharge over TMEP Protection detect
+#define	FDUTA		(u16)((1UL<<11))					// Discharge under TMEP Protection detect
+//#define	FAOVA		(u16)((1UL<<12))				// Auxiliary over voltage Protection detect
+//#define	FAUVA		(u16)((1UL<<13))				// Auxiliary under voltage Protection detect
+//#define	FIMBA		(u16)((1UL<<14))				// Cell imbalance Fault Detection
+//#define	FTDFA		(u16)((1UL<<15))				// TEMP difference Fault Detection
+
+
+
+//////////////////////////////////////////////////////////////////////////
+
+#define PWDNV		2600U
+
+#define	CELLOVPD	(4200U)									// Cell Over Voltage Protection				(1.0mV)
+#define	CELLOVPR	(4100U)									// Cell Over Voltage Protection Release		(1.0mV)
+#define	CELLOVAD	(4150U)									// Cell Over Voltage Alarm 					(1.0mV)
+#define	CELLOVAR	(4100U)									// Cell Over Voltage Alarm Release			(1.0mV)
+
+#define	CELLUVPD	(3000U)									// Cell Under Voltage Protection			(1.0mV)
+#define	CELLUVPR	(3400U)									// Cell Under Voltage Protection Release	(1.0mV)
+#define	CELLUVAD	(3300U)									// Cell Under Voltage Alarm 				(1.0mV)
+#define	CELLUVAR	(3400U)									// Cell Under Voltage Alarm Release			(1.0mV)
+
+#define	PACKOVPD	((u32)CELLOVPD*NCV)				// Pack Over Voltage Protection				(1.0mV)
+#define	PACKOVPR	((u32)CELLOVPR*NCV)				// Pack Over Voltage Protection Release		(1.0mV)
+#define	PACKOVAD	((u32)CELLOVAD*NCV)				// Pack Over Voltage Alarm 					(1.0mV)
+#define	PACKOVAR	((u32)CELLOVAR*NCV)				// Pack Over Voltage Alarm Release			(1.0mV)
+
+#define	PACKUVPD	((u32)CELLUVPD*NCV)				// Pack Under Voltage Protection			(1.0mV)
+#define	PACKUVPR	((u32)CELLUVPR*NCV)				// Pack Under Voltage Protection Release	(1.0mV)
+#define	PACKUVAD	((u32)CELLUVAD*NCV)				// Pack Under Voltage Alarm 				(1.0mV)
+#define	PACKUVAR	((u32)CELLUVAR*NCV)				// Pack Under Voltage Alarm Release			(1.0mV)
+
+#define	CHAGOCPD	(111200L)								// Charge Over Current Detection			(1mA)
+#define	CHAGOCPR	(-5000L)								// Charge Over Current Detect release		(1mA)
+#define	CHAGOCAD	(100000L)								// Charge Over Current Alarm				(1mA)
+#define	CHAGOCAR	(-5000L)								// Charge Over Current Alarm release		(1mA)
+
+#define	DCHGOCPD	(-222400L)								// Discharge Over Current Detection			(1mA)
+#define	DCHGOCPR	(5000L)									// Discharge Over Current Detect release	(1mA)
+#define	DCHGOCAD	(-200000L)								// Discharge Over Current Alarm				(1mA)
+#define	DCHGOCAR	(5000L)									// Discharge Over Current Alarm	release		(1mA)
+
+#define	DCHGOCPD2	(-200000L)								// Discharge Over Current 2'nd Detection		(1mA)
+#define	DCHGOCPR2	(5000L)									// Discharge Over Current 2'nd Detect release	(1mA)
+#define	DCHGOCAD2	(-200000L)								// Discharge Over Current 2'nd Alarm Detection	(1mA)
+#define	DCHGOCAR2	(-5000L)								// Discharge Over Current 2'nd Alarm release 	(1mA)
+
+#define	CHAGOTPD	(600L)									// Charge Over TEMP Protection				(0.1deg)
+#define	CHAGOTPR	(550L)									// Charge Over TEMP Protection Release		(0.1deg)
+#define	CHAGOTAD	(570L)									// Charge Over TEMP Alarm					(0.1deg)
+#define	CHAGOTAR	(550L)									// Charge Over TEMP Alarm Release			(0.1deg)
+
+#define	CHAGUTPD	(-400L)									// Charge under TEMP Protection				(0.1deg)
+#define	CHAGUTPR	(-350L)									// Charge under TEMP Protection Release		(0.1deg)
+#define	CHAGUTAD	(-370L)									// Charge under TEMP Alarm					(0.1deg)
+#define	CHAGUTAR	(-350L)									// Charge under TEMP Alarm Release			(0.1deg)
+
+#define	DCHGOTPD	(600L)									// Discharge Over TEMP Protection			(0.1deg)
+#define	DCHGOTPR	(550L)									// Discharge Over TEMP Protection Release	(0.1deg)
+#define	DCHGOTAD	(570L)									// Discharge Over TEMP Alarm				(0.1deg)
+#define	DCHGOTAR	(550L)									// Discharge Over TEMP Alarm Release		(0.1deg)
+
+#define	DCHGUTPD	(-400L)									// Discharge under TEMP Protection			(0.1deg)
+#define	DCHGUTPR	(-350L)									// Discharge under TEMP Protection Release	(0.1deg)
+#define	DCHGUTAD	(-370L)									// Discharge under TEMP Alarm				(0.1deg)
+#define	DCHGUTAR	(-350L)									// Discharge under TEMP Alarm Release		(0.1deg)
+
+//230410 SJH Ref.Temp
+#define REFTPD1	    (210L)									// Reference TEMP Protection				(0.1deg)
+#define	REFTPD2		(290L)									// Reference TEMP Alarm						(0.1deg)
+#define	DLYREFTPD	(3000U/TIME_UNIT)						// Reference TEMP Delay
+#define	DLYREFTDR	(500U/TIME_UNIT)						// Reference TEMP Release
+
+#define AUXIOVPD	(16000U)								// Auxiliary Over Voltage Protection		(1.0mV)
+#define AUXIOVPR	(15500U)								// Auxiliary Over Voltage Protect release	(1.0mV)
+#define AUXIOVAD	(15500U)								// Auxiliary Over Voltage Alarm				(1.0mV)
+#define AUXIOVAR	(15500U)								// Auxiliary Over Voltage Alarm release		(1.0mV)
+
+#define AUXIUVPD	(8000U)									// Auxiliary under Voltage Protection		(1.0mV)
+#define AUXIUVPR	(8500U)									// Auxiliary under Voltage Protect release	(1.0mV)
+#define AUXIUVAD	(8000U)									// Auxiliary under Voltage Alarm			(1.0mV)
+#define AUXIUVAR	(8500U)									// Auxiliary under Voltage Alarm release	(1.0mV)
+
+#define CVIMBLPD	(350U)									// Cell imbalance Protection Voltage 		(1.0mV)
+#define CVIMBLPR	(150U)									// Cell imbalance Protection release Voltage(1.0mV)
+#define CVIMBLAD	(250U)									// Cell imbalance Protection Alarm          (1.0mV)
+#define CVIMBLAR	(150U)									// Cell imbalance Protection release Alarm  (1.0mV)
+
+#define THDIFFPD	(150L)									// TEMP difference Protection				(1.0mV)
+#define THDIFFPR	(130L)									// TEMP difference Protection release		(1.0mV)
+#define THDIFFAD	(130L)									// TEMP difference Protection Alarm			(1.0mV)
+#define THDIFFAR	(130L)									// TEMP difference Protection release Alarm	(1.0mV)
+
+#define CVMEASFD	(10000L)								// Cell voltage measurement fault detection (1.0mV)
+#define CVMEASFR	(10000L)								// Cell voltage measurement fault release   (1.0mV)
+#define PIMEASFD	(3000L)									// Current measurement fault detection 		(1.0mA)
+#define PIMEASFR	(10000L)								// Current measurement fault release   		(1.0mA)
+#define THMEASFD	(150L)									// TEMP voltage measurement fault detection (0.1deg)
+#define THMEASFR	(150L)									// TEMP voltage measurement fault release   (0.1deg)
+
+#define ADIOVPD		(3000L)									// TEMP difference Protection Alarm			(1.0mV)
+#define ADIOVPR		(130L)									// TEMP difference Protection release Alarm	(1.0mV)
+#define ADIOUPD		(130L)									// TEMP difference Protection Alarm			(1.0mV)
+#define ADIOUPR		(130L)									// TEMP difference Protection release Alarm	(1.0mV)
+
+//////////////////////////////////////////////////////////////////////////
+
+#define	DLYCOVPD	(3000U/TIME_UNIT)						// Cell Over Voltage Protection detect Delay
+#define	DLYCOVPR	(3000U/TIME_UNIT)						// Cell Over Voltage Protection Release Delay
+#define	DLYCOVAD	(3000U/TIME_UNIT)						// Cell Over Voltage Alarm Delay
+#define	DLYCOVAR	(3000U/TIME_UNIT)						// Cell Over Voltage Alarm Release
+
+#define	DLYCUVPD	(3000U/TIME_UNIT)						// Cell Under Voltage Protection detect Delay
+#define	DLYCUVPR	(3000U/TIME_UNIT)						// Cell Under Voltage Protection Release Delay
+#define	DLYCUVAD	(3000U/TIME_UNIT)						// Cell Under Voltage Alarm Delay
+#define	DLYCUVAR	(3000U/TIME_UNIT)						// Cell Under Voltage Alarm Release
+
+#define	DLYPOVPD	(3000U/TIME_UNIT)						// Pack Over Voltage Detection Delay
+#define	DLYPOVPR	(3000U/TIME_UNIT)						// Pack Over Voltage Release Delay
+#define	DLYPOVAD	(3000U/TIME_UNIT)						// Pack Over Voltage Alarm Release Delay
+#define	DLYPOVAR	(3000U/TIME_UNIT)						// Pack Over Voltage Alarm Release
+
+#define	DLYPUVPD	(3000U/TIME_UNIT)						// Pack Under Voltage Detection Delay
+#define	DLYPUVPR	(3000U/TIME_UNIT)						// Pack Under Voltage Release Delay
+#define	DLYPUVAD	(3000U/TIME_UNIT)						// Pack Under Voltage Alarm Release Delay
+#define	DLYPUVAR	(3000U/TIME_UNIT)						// Pack Under Voltage Alarm Release
+
+#define	DLYCOCPD	(3000U/TIME_UNIT)						// Charge over current protection detect Delay
+#define	DLYCOCPR	(3000U/TIME_UNIT)						// Charge over current protection release Delay
+#define	DLYCOCAD	(3000U/TIME_UNIT)						// Charge over current alarm detect Delay
+#define	DLYCOCAR	(3000U/TIME_UNIT)						// Charge over current alarm release Delay
+
+#define	DLYVDHGR	(3000U/TIME_UNIT)						// Cell/Pack Over Voltage protection release Delay@Discharge
+#define	DLYVCHGR	(3000U/TIME_UNIT)						// Cell/Pack Under Voltage protection release Delay@Charge
+
+
+#define	DLYDOCPD	(3000U/TIME_UNIT)						// Discharge over current protection detect Delay
+#define	DLYDOCPR	(3000U/TIME_UNIT)						// Discharge over current protection release Delay
+#define	DLYDOCAD	(3000U/TIME_UNIT)						// Discharge over current alarm detect Delay
+#define	DLYDOCAR	(3000U/TIME_UNIT)						// Discharge over current alarm release Delay
+
+#define	DLYDOCPD2	(200U/TIME_UNIT)						// Discharge over current 2'nd protection detect Delay
+#define	DLYDOCPR2	(200U/TIME_UNIT)						// Discharge over current 2'nd protection release Delay
+#define	DLYDOCAD2	(200U/TIME_UNIT)						// Discharge over current 2'nd alarm detect Delay
+#define	DLYDOCAR2	(200U/TIME_UNIT)						// Discharge over current 2'nd alarm release Delay
+
+#define	DLYCOTPD	(5000U/TIME_UNIT)						// Charge over Temp Detection Delay
+#define	DLYCOTPR	(5000U/TIME_UNIT)						// Charge over Temp Detection Release
+#define	DLYCOTAD	(5000U/TIME_UNIT)						// Charge over Temp Alarm Delay
+#define	DLYCOTAR	(5000U/TIME_UNIT)						// Charge over Temp Alarm Release
+
+#define	DLYCUTPD	(5000U/TIME_UNIT)						// Charge under Temp Detection Delay
+#define	DLYCUTPR	(5000U/TIME_UNIT)						// Charge under Temp Detection Release
+#define	DLYCUTAD	(5000U/TIME_UNIT)						// Charge under Temp Alarm Delay
+#define	DLYCUTAR	(5000U/TIME_UNIT)						// Charge under Temp Alarm Release
+
+#define	DLYDOTPD	(5000U/TIME_UNIT)						// Discharge over Temp Detection Delay
+#define	DLYDOTPR	(5000U/TIME_UNIT)						// Discharge over Temp Detection Release
+#define	DLYDOTAD	(5000U/TIME_UNIT)						// Discharge over Temp Alarm Delay
+#define	DLYDOTAR	(5000U/TIME_UNIT)						// Discharge over Temp Alarm Release
+
+#define	DLYDUTPD	(5000U/TIME_UNIT)						// Discharge under Temp Detection Delay
+#define	DLYDUTPR	(5000U/TIME_UNIT)						// Discharge under Temp Detection Release
+#define	DLYDUTAD	(5000U/TIME_UNIT)						// Discharge under Temp Alarm Delay
+#define	DLYDUTAR	(5000U/TIME_UNIT)						// Discharge under Temp Alarm Release
+
+#define	DLYAOVPD	(3000U/TIME_UNIT)						// Auxiliary over voltage Detection Delay
+#define	DLYAOVPR	(3000U/TIME_UNIT)						// Auxiliary over voltage Detection release Delay
+#define	DLYAOVAD	(3000U/TIME_UNIT)						// Auxiliary over voltage Alarm Delay
+#define	DLYAOVAR	(3000U/TIME_UNIT)						// Auxiliary over voltage Alarm release Delay
+
+#define	DLYAUVPD	(3000U/TIME_UNIT)						// Auxiliary under voltage Detection Delay
+#define	DLYAUVPR	(3000U/TIME_UNIT)						// Auxiliary under voltage Detection release Delay
+#define	DLYAUVAD	(3000U/TIME_UNIT)						// Auxiliary under voltage Alarm Delay
+#define	DLYAUVAR	(3000U/TIME_UNIT)						// Auxiliary under voltage Alarm release Delay
+
+#define	DLYIMBPD	(5000U/TIME_UNIT)						// Cell imbalance Protection Delay
+#define	DLYIMBPR	(5000U/TIME_UNIT)						// Cell imbalance Protection release  Delay
+#define	DLYIMBAD	(5000U/TIME_UNIT)						// Cell imbalance alarm Delay
+#define	DLYIMBAR	(5000U/TIME_UNIT)						// Cell imbalance alarm release Delay
+
+#define	DLYTDFPD	(5000U/TIME_UNIT)						// TEMP difference Protection Delay
+#define	DLYTDFPR	(5000U/TIME_UNIT)						// TEMP difference Protection release Delay
+#define	DLYTDFAD	(5000U/TIME_UNIT)						// TEMP difference alarm Delay
+#define	DLYTDFAR	(5000U/TIME_UNIT)						// TEMP difference alarm release Delay
+
+#define	DLYCVMFD	(3000U/TIME_UNIT)						// Voltage measure fault Delay
+#define	DLYCVMFR	(3000U/TIME_UNIT)						// Voltage measure fault release Delay
+#define	DLYPIMFD	(3000U/TIME_UNIT)						// current measure fault Delay
+#define	DLYPIMFR	(3000U/TIME_UNIT)						// current measure fault release Delay
+#define	DLYTHMFD	(5000U/TIME_UNIT)						// TEMP measure fault Delay
+#define	DLYTHMFR	(5000U/TIME_UNIT)						// TEMP measure fault release Delay
+
+#define	DLYRLYFD	(3000U/TIME_UNIT)						//
+#define	DLYCPFD		(3000U/TIME_UNIT)						//
+#define	DLYCPFR		(3000U/TIME_UNIT)						//
+
+#define	DLYFCOMD	(3000U/TIME_UNIT)						// Discharge over current protection detect Delay
+#define	DLYFCOMR	(3000U/TIME_UNIT)						// Discharge over current protection release Delay
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum{
+	MN_NOR_TYPE = 0,
+	MN_OVP_TYPE = 1,
+	MN_UVP_TYPE = 2,
+	MN_OTP_TYPE = 3,
+	MN_UTP_TYPE = 4,
+	MN_COC_TYPE = 5,
+	MN_DOC_TYPE = 6,
+	MN_RST_TYPE = 16
+}eMenualDetTest;
+
+/* Exported variables ------------------------------------------------------------------------------*/
+extern u32 fDet;
+/* Exported function prototypes --------------------------------------------------------------------*/
+u8 CellOVPD(u16 volt);											// Cell over voltage Protection detect
+u8 CellUVPD(u16 volt);											// Cell under voltage Protection detect
+u8 PackOVPD(u32 volt);											// Pack over voltage Protection detect
+u8 PackUVPD(u32 volt);											// Pack under voltage Protection detect
+u8 ChagOCPD(s32 curr);											// Charge over current Protection detect
+u8 DchgOCPD(s32 curr);											// Discharge over current Protection detect
+u8 DchgOC2ndPD(s32 curr);										// Discharge over current 2'nd Protection detect
+u8 DchShortPD(void);											// Short protection
+
+u8 ChagOTPD(s16 temp, u32 fchag);								// Charge over TMEP Protection detect
+u8 ChagUTPD(s16 temp, u32 fchag);								// Charge under TMEP Protection detect
+u8 DchgOTPD(s16 temp, u32 fdchg);								// Discharge over TMEP Protection detect
+u8 DchgUTPD(s16 temp, u32 fdchg);								// Discharge under TMEP Protection detect
+u8 ADTempFD(s16 temp);											// Reference TMEP Protection detect
+u8 AuxiOVPD(u16 volt);											// Auxiliary over voltage Protection detect
+u8 AuxiUVPD(u16 volt);											// Auxiliary under voltage Protection detect
+u8 CellVImbalPD(s16 volt);										// Cell imbalance Protection Detection
+//u8 TempDifferPD(s16 temp);									// TEMP difference Protection Detection
+
+u8 CellOVPR(u16 volt);											// Cell over voltage Protection release
+u8 CellUVPR(u16 volt);											// Cell under voltage Protection release
+u8 CellPackDchgOVPR(s32 curr);									// Cell over voltage Protection release @ Discharge -2.0A
+u8 CellPackChagUVPR(s32 curr);									// Cell under voltage Protection release @ Charge +2.0A
+u8 PackOVPR(u32 volt);											// Pack over voltage Protection release
+u8 PackUVPR(u32 volt);											// Pack under voltage Protection release
+u8 ChagOCPR(s32 curr);											// Charge over current Protection release
+u8 DchgOCPR(s32 curr);											// Discharge over current Protection release
+u8 DchgOC2ndPR(s32 curr);										// Discharge over current 2'nd Protection release
+///u8 DchShortPR(s32 curr);										// Discharge short Protection release
+
+u8 ChagOTPR(s16 temp, u32 fdchg);								// Charge over TMEP Protection release
+u8 ChagUTPR(s16 temp, u32 fdchg);								// Charge under TMEP Protection release
+u8 DchgOTPR(s16 temp, u32 fchag);								// Discharge over TMEP Protection release
+u8 DchgUTPR(s16 temp, u32 fchag);								// Discharge under TMEP Protection release
+u8 ADTempFDR(s16 temp);											// Reference TMEP Protection release
+u8 AuxiOVPR(u16 volt);											// Auxiliary over voltage Protection release
+u8 AuxiUVPR(u16 volt);											// Auxiliary under voltage Protection release
+u8 CellVImbalPR(s16 volt);										// Cell imbalance Protection release
+u8 TempDifferPR(s16 temp);										// TEMP difference Protection release
+
+u8 VoltMeasFR(u32 pvin , u32 cvsum);							// Cell VOLT Measurement Fault release
+#else
+
+
+
+/* Exported define ---------------------------------------------------------------------------------*/
+//define
+#define DET_CHECK_COUNT_DEF			(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_OVP			(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_UVP			(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_POVP		(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_POVP		(3000U/TIME_UNIT)
+
+#define DET_CHECK_COUNT_COTP		(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_CUTP		(3000U/TIME_UNIT)
+
+#define DET_CHECK_COUNT_DOTP		(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_DUTP		(3000U/TIME_UNIT)
+
+#define DET_CHECK_COUNT_COCP		(3000U/TIME_UNIT)
+#define DET_CHECK_COUNT_DOCP		(3000U/TIME_UNIT)
+
+#define DET_CHECK_COUNT_IMBP		(3000U/TIME_UNIT)
+
+
+// fdet[0]
+#define	FCOV		(u32)((1UL<<WF_COVP_Type))					// Cell over voltage Protection detect
+#define	FCUV		(u32)((1UL<<WF_CUVP_Type))					// Cell under voltage Protection detect
+
+#define	FPOV		(u32)((1UL<<WF_P_OVP_Type))					// Pack over voltage Protection detect
+#define	FPUV		(u32)((1UL<<WF_P_UVP_Type))					// Pack under voltage Protection detect
+
+#define	FCOC		(u32)((1UL<<WF_C_OCP_Type))					// Charge over current Protection detect
+#define	FDOC		(u32)((1UL<<WF_D_OCP_Type))					// Discharge over current Protection detect
+
+#define	FCOT		(u32)((1UL<<WF_C_OTP_Type))					// Charge over TMEP Protection detect
+#define	FCUT		(u32)((1UL<<WF_C_UTP_Type))					// Charge under TMEP Protection detect
+
+#define	FDOT		(u32)((1UL<<WF_D_OTP_Type))					// Discharge over TMEP Protection detect
+#define	FDUT		(u32)((1UL<<WF_D_UTP_Type))					// Discharge under TMEP Protection detect
+
+#define	FIMB		(u32)((1UL<<12))							// Cell imbalance Fault Detection
+#define	FCOM		(u32)((1UL<<13))							// TCMS Comm Fail Detection > 5s
+#define	FPSC		(u32)((1UL<<15))							// FET Short Fault Detection
+
+//#define	FVMS		(u32)((1UL<<16))						// Cell VOLT Measurement Fault Detection
+//#define	FIMS		(u32)((1UL<<17))						// CURR Measurement Fault Detection
+//#define	FTMS		(u32)((1UL<<18))						// TEMP Measurement Fault Detection
+//#define	FTRL		(u32)((1UL<<19))						// Top Relay Fault Detection
+//#define	FBRL		(u32)((1UL<<20))						// Bottom Relay Fault Detection
+//#define	FPRL		(u32)((1UL<<21))						// Pre-charge Relay Fault Detection
+#define	FFUS			(u32)((1UL<<22))						// Fuse Fault Detection
+//#define	FADMF		(u32)((1UL<<23))						// AD Measurement Fault Detection
+
+// fdet[3]
+#define	FRTMF		(u32)((1UL<<24))	
+
+//va
+
+/* Exported typedef --------------------------------------------------------------------------------*/
+
+typedef enum {	
+	WF_W_Type								= 0,
+	WF_F_Type 								= 1,
+	MAX_WF_Type								= 2
+}Enum_WF_Type;
+
+typedef enum{
+	WF_OVER_Type							= 0,
+	WF_UNDR_Type,
+	MAX_UnOver_Type
+}Enum_WFUnOver_Type;
+
+typedef enum{
+ 	WF_COVP_Type							= 0,
+	WF_CUVP_Type							,
+	
+	WF_P_OVP_Type							,
+ 	WF_P_UVP_Type							,
+	WF_C_OTP_Type							,
+	WF_C_UTP_Type							,
+ 	WF_D_OTP_Type							,
+	WF_D_UTP_Type							,
+
+	WF_C_OCP_Type							,
+ 	WF_D_OCP_Type							,
+		 	
+ 	WF_Pack_OVP_Type						,
+	WF_Pack_UVP_Type						,
+ 	WF_Pack_OTP_Type						,
+	WF_Pack_UTP_Type						,
+ 	//WF_Soc_Low_Type						,
+ 	//WF_Contactor_Type						,
+ 	//WF_SlaveComm_Type						,
+ 	WF_Imbal_Type							,
+	//WF_SlaveContactorCount_Type			,
+	//WF_Int_OTP_Type						,
+ 	//WF_IC_OTP_Type						,
+ 	//WF_Switch_OTP_Type					,
+ 	
+	//WF_Cell_T_Sensing_Type				,
+	//WF_Cell_V_Sensing_Type				,
+	//WF_PrechargeFail_Type					,
+	//WF_Dc_Regen_Type						,
+	WF_NTC_Open_Type						,
+	WF_NTC_Short_Type						,
+	WF_Permanent_Fail_Type					,
+
+	MAX_WFPos_Type     						
+}Enum_WFPos_Type;
+
+typedef struct{
+	u8	u8WarningFault;
+	
+	u16	u16_Ovp;
+	u16	u16_Uvp;
+
+	u16	u16_P_Ovp;
+	u16	u16_P_Uvp;
+
+	s32	s32_C_Ocp;
+	s32	s32_D_Ocp;
+	
+	s8	s8_D_Otp;
+	s8	s8_D_Utp;
+	
+	s8	s8_C_Otp;
+	s8	s8_C_Utp;
+
+	u8	u8_Imbal;
+}sWF_Spec;
+
+
+#ifdef DET_UPATE    //2025-12-04   jkpark  DETECT 관련 수정.
+
+typedef enum{
+ 	LA_COVP_INDEX	= 0,                                        //jkpark 2025-12-04 Cell Over Voltage Protection detect
+	LA_CUVP_INDEX	,                                           //jkpark 2025-12-04 Cell Under Voltage Protection detect
+ 	LA_POVP_INDEX	,                                           //jkpark 2025-12-04 Pack Over Voltage Protection detect
+	LA_PUVP_INDEX	,                                           //jkpark 2025-12-04 Pack Under Voltage Protection detect
+	LA_COCP_INDEX	,                                           //jkpark 2025-12-04 Charge Over Current Protection detect
+	LA_DOCP_INDEX	,                                           //jkpark 2025-12-04 Discharge Over Current Protection detect
+	LA_COTP_INDEX	,                                           //jkpark 2025-12-04 Charge Over TMEP Protection detect
+	LA_CUTP_INDEX	,                                           //jkpark 2025-12-04 Charge Under TMEP Protection detect
+	LA_DOTP_INDEX	,                                           //jkpark 2025-12-04 Discharge Over TMEP Protection detect
+	LA_DUTP_INDEX	,                                           //jkpark 2025-12-04 Discharge Under TMEP Protection detect
+//	LA_IMBP_INDEX	,                                           //jkpark 2025-12-04 cell IMBalance Protection detection
+	LA_INDEX_MAX     						
+}EnumLinerAlertType;
+
+typedef enum
+{
+    DET_S_NORMAL = 0,                                            //jkpark 2025-12-04 Detect State 보통, 경고, 오류.
+    DET_S_DETECT,
+    DET_S_MAX
+}DetFlagType;
+    
+typedef enum
+{
+    COMP_G = 0,   /* > Threshold */
+    COMP_L,       /* < Threshold */
+    COMP_MAX
+} CompType;
+
+typedef struct
+{
+//------------------------------------------------------------------------------------------------------------
+ //jkpark 2025-12-04 Detect 관련 설정 값.
+    uint32_t    flagDetect;     //jkpark 2025-12-04 Dectect 되면 사용할 Flag값.
+    int32_t     thDetEnter;     //jkpark 2025-12-04 Detect 진입 threshold
+    uint8_t     cntDetE;        //jkpark 2025-12-04 Detect 카운트
+    int32_t     thDetRelease;   //jkpark 2025-12-04 Detect 해제 threshold
+    uint8_t     cntDetR;        //jkpark 2025-12-04 Detect 해제 카운트
+//------------------------------------------------------------------------------------------------------------
+    //jkpark 2025-12-04 비교 방향: Over를 체크할때 >= (COMP_GE) 또는 Under를 체크할때 <= (COMP_LE)    
+    CompType comp_type;         
+}DetRefType;
+
+typedef struct
+{
+	DetFlagType     state;      //jkpark 2025-12-04 현재 상태.
+    uint8_t         cntD;        //jkpark 2025-12-04 Det 시간을 카운트.
+    uint8_t         cntR;        //jkpark 2025-12-04 Det 해제 시간을 카운트.
+}DetStateType;
+
+#endif //DET_UPATE
+
+
+// Reference TEMP Measurement Fault Detection
+
+extern sWF_Spec g_sWF_Spec[MAX_WF_Type];
+extern u16 g_u16OccurCheckCount[MAX_WF_Type][MAX_WFPos_Type];
+extern u16 g_u16ReleaseCheckCount[MAX_WF_Type][MAX_WFPos_Type];
+extern u32 g_u32WarnStatus;
+extern u32 g_u32FaultStatus;
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+void DetChk_Occur(Enum_WFUnOver_Type eUnOv, Enum_WF_Type eWF_Type, Enum_WFPos_Type eWF_Pos, u16 u16CheckCount, s32 s32Value, s32 s32Spec);
+void DetChk_Release(Enum_WFUnOver_Type eUnOv, Enum_WF_Type eCurType, Enum_WFPos_Type eCurPos, u16 u16CheckCount,s32 s32Value, s32 s32Spec);
+//void DetChk_O_ResetCount(Enum_WF_Type eCurType, Enum_WFPos_Type eCurPos);
+//void DetChk_R_ResetCount(Enum_WF_Type eCurType, Enum_WFPos_Type eCurPos);
+void DetChk_Default(sWF_Spec *pstBmsSpec);
+
+#endif
+
+
+#endif //__MS_DET_H__

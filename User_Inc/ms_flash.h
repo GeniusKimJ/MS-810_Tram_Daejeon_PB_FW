@@ -1,0 +1,58 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(flash)					                                          *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-12-22                                                               	*
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_flash.h
+\author             KKD
+\date               2025-12-22 
+\brief              battery thermal management
+*********************************************
+* History:
+* 2025-12-22     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef MS_FALSH_H
+#define MS_FALSH_H
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_main.h"
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define BOOTSTARTADDR  				((u32)0x08020000)
+
+#define FLASH_SECTOR_SIZE			(512UL)
+#define FLASHPAGESIZE 				16384UL							// 0x800
+
+#define STARTPOSITION				0x00000000UL
+#define FLASH_SECTOR0_ADDR   		0x08000000UL
+#define FLASH_SECTOR1_ADDR   		0x08004000UL
+#define FLASH_SECTOR2_ADDR   		0x08008000UL
+#define FLASH_SECTOR3_ADDR   		0x0800C000UL
+#define FLASH_SECTOR4_ADDR   		0x08010000UL
+#define FLASH_SECTOR5_ADDR   		0x08020000UL
+#define FLASH_SECTOR6_ADDR   		0x08040000UL
+#define FLASH_SECTOR7_ADDR   		0x08060000UL
+#define FLASH_SECTOR8_ADDR   		0x08080000UL
+#define FLASH_SECTOR9_ADDR   		0x080A0000UL
+#define FLASH_SECTOR10_ADDR 		0x080C0000UL
+#define FLASH_SECTOR11_ADDR  		0x080E0000UL
+
+
+
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+/* Exported variables ------------------------------------------------------------------------------*/
+extern u32 CalTotalChkSum;
+extern u32 GetTotalChkSum;
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+HAL_StatusTypeDef Flash_Stm32f407_SectorEraseByAddr(u32 any_addr_in_sector);
+HAL_StatusTypeDef Flash_Stm32f407_Write(u32 address, const void *pdata, u32 word_cnt);
+HAL_StatusTypeDef Flash_Stm32F407_Erase(u32 page_adres, u8 nb_pages);
+
+#endif /* __MS_FLASH_H__ */

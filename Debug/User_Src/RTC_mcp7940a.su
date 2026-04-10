@@ -1,0 +1,8 @@
+../User_Src/RTC_mcp7940a.c:54:4:Bcd2Dec	0	static
+../User_Src/RTC_mcp7940a.c:59:4:Dec2Bcd	0	static
+../User_Src/RTC_mcp7940a.c:64:4:RTC_ChkComm	0	static
+../User_Src/RTC_mcp7940a.c:81:6:RTC_SetLocalTime	56	static
+../User_Src/RTC_mcp7940a.c:120:6:RTC_GetLocalTime	32	static
+../User_Src/RTC_mcp7940a.c:144:6:RTC_GetSocToMcp7940	32	static
+../User_Src/RTC_mcp7940a.c:239:6:RTC_SaveSocToMcp7940	24	static
+../User_Src/RTC_mcp7940a.c:300:6:RTC_Init	40	static

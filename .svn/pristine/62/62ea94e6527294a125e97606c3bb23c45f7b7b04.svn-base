@@ -1,0 +1,168 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Battery Protection)                                           	   *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_eep.c
+\author             KKD
+\date               2025-11-21 
+\brief              보호동작
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_det.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+//Warning, fault
+sWF_Spec g_sWF_Spec[MAX_WF_Type];
+
+u16 g_u16OccurCheckCount[MAX_WF_Type][MAX_WFPos_Type];
+u16 g_u16ReleaseCheckCount[MAX_WF_Type][MAX_WFPos_Type];
+
+u32 g_u32WarnStatus;
+u32 g_u32FaultStatus;
+
+
+
+
+void DetChk_Occur(Enum_WFUnOver_Type eUnOv, 
+								Enum_WF_Type eWF_Type, 
+								Enum_WFPos_Type eWF_Pos,
+								u16 u16CheckCount, s32 s32Value, s32 s32Spec)
+{
+	BOOL bOccured = FALSE;
+
+
+	for(u8 i = 0;i<MAX_WF_Type; i++)
+	{
+		if(eUnOv == WF_OVER_Type){
+			if(s32Value > s32Spec)	{g_u16OccurCheckCount[eWF_Type][eWF_Pos]++;}
+			else					{g_u16OccurCheckCount[eWF_Type][eWF_Pos] = 0;}
+		}else{
+			if(s32Value < s32Spec)	{g_u16OccurCheckCount[eWF_Type][eWF_Pos]++;}
+			else					{g_u16OccurCheckCount[eWF_Type][eWF_Pos] = 0;}
+
+		}
+
+		if(g_u16OccurCheckCount[eWF_Type][eWF_Pos] >= u16CheckCount){
+			g_u16OccurCheckCount[eWF_Type][eWF_Pos] = u16CheckCount;
+			bOccured = TRUE;
+		}
+
+		if(bOccured == TRUE){
+			if(eWF_Type == WF_W_Type){g_u32WarnStatus |= (1 << eWF_Pos);}
+			else				   {g_u32FaultStatus |= (1 << eWF_Pos);}
+			g_u16OccurCheckCount[eWF_Type][eWF_Pos] = 0;
+		}
+	}
+}
+
+void DetChk_Release(Enum_WFUnOver_Type eUnOv, 
+										Enum_WF_Type eWF_Type, 
+										Enum_WFPos_Type eWF_Pos, 
+										u16 u16CheckCount, s32 s32Value, s32 s32Spec)
+{
+	BOOL bReleased = FALSE;
+
+	if(eUnOv == WF_OVER_Type){
+		if(s32Value >= s32Spec)	{g_u16ReleaseCheckCount[eWF_Type][eWF_Pos]++;}		//KKD 2025-12-01 Under Release Check
+		else					{g_u16ReleaseCheckCount[eWF_Type][eWF_Pos] = 0;}
+	}else{
+		if(s32Value <= s32Spec)	{g_u16ReleaseCheckCount[eWF_Type][eWF_Pos]++;} 		//KKD 2025-12-01 Over Release Check
+		else					{g_u16ReleaseCheckCount[eWF_Type][eWF_Pos] = 0;}
+	}
+
+
+	if(g_u16ReleaseCheckCount[eWF_Type][eWF_Pos] >= u16CheckCount){
+		g_u16ReleaseCheckCount[eWF_Type][eWF_Pos] = u16CheckCount;
+		bReleased = TRUE;
+	}
+
+	if(bReleased == TRUE){
+		if(eWF_Type == WF_W_Type){g_u32WarnStatus &= ~(1 << eWF_Pos);}
+		else					{g_u32FaultStatus &= ~(1 << eWF_Pos);}
+		g_u16ReleaseCheckCount[eWF_Type][eWF_Pos] = 0;
+	}
+}
+
+void DetChk_Default(sWF_Spec *psDetSpec)
+{
+	memset((u8*)&(psDetSpec[WF_W_Type].u8WarningFault), 0x00, sizeof(sWF_Spec));
+	memset((u8*)&(psDetSpec[WF_F_Type].u8WarningFault), 0x00, sizeof(sWF_Spec));
+	
+	psDetSpec[WF_W_Type].u8WarningFault 	= WF_W_Type;
+	psDetSpec[WF_W_Type].u16_Ovp 			= (2650);		// mV
+	psDetSpec[WF_W_Type].u16_Uvp			= (1750);		// mV
+	//psDetSpec[WF_W_Type].u16Pack_Ovp		= (7632);		// 100mV
+	//psDetSpec[WF_W_Type].u16Pack_Uvp		= (4500);		// 100mV
+	psDetSpec[WF_W_Type].s32_D_Ocp			= (900);		// 1mA
+	psDetSpec[WF_W_Type].s32_C_Ocp			= (900);		// 1mA
+	psDetSpec[WF_W_Type].s8_D_Otp			= (40);  		// 'C
+	psDetSpec[WF_W_Type].s8_C_Utp			= (5);	
+	psDetSpec[WF_W_Type].s8_D_Otp			= (55);  		// 'C
+	psDetSpec[WF_W_Type].s8_D_Utp			= (-10);	
+	psDetSpec[WF_W_Type].u8_Imbal			= (50);			// 10mV
+
+	psDetSpec[WF_F_Type].u8WarningFault 	= WF_F_Type;
+	psDetSpec[WF_F_Type].u16_Ovp			= (2700);		// mV	
+	psDetSpec[WF_F_Type].u16_Uvp			= (1500);		// mV
+	//psDetSpec[WF_F_Type].u16Pack_Ovp		= (5880); 		// 100mV
+	//psDetSpec[WF_F_Type].u16Pack_Uvp		= (4200);		// 100mV 70%
+	psDetSpec[WF_F_Type].s32_D_Ocp			= (900);		// 1mA
+	psDetSpec[WF_F_Type].s32_C_Ocp			= (900);		// 1mA
+	psDetSpec[WF_F_Type].s8_D_Otp			= (45);  		// 'C
+	psDetSpec[WF_F_Type].s8_C_Utp			= (0);	
+	psDetSpec[WF_F_Type].s8_D_Otp			= (60);     	// 'C'
+	psDetSpec[WF_F_Type].s8_D_Utp			= (-20);
+	psDetSpec[WF_F_Type].u8_Imbal			= (100);		// 10mV
+	
+	//write eep
+}
+
+void Det_Proc(void)	                                                                 //KKD 2025-11-28 신규 프로텍션 체크 기능 현재 구현 중~ (근데 기존께 더 간단할수도있음.)
+{
+	/*OVP*/
+	DetChk_Occur	(WF_OVER_Type, WF_W_Type,	WF_COVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.maxcv, (u32)g_sWF_Spec[WF_W_Type].u16_Ovp);		
+	DetChk_Occur	(WF_OVER_Type, WF_F_Type,	WF_COVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.maxcv, (u32)g_sWF_Spec[WF_F_Type].u16_Ovp);
+	DetChk_Release	(WF_OVER_Type, WF_W_Type,	WF_COVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.maxcv, (u32)g_sWF_Spec[WF_F_Type].u16_Ovp);	//Warning 해지시만
+
+	/*UVP*/
+	DetChk_Occur	(WF_UNDR_Type, WF_W_Type,	WF_CUVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.mincv, (u32)g_sWF_Spec[WF_W_Type].u16_Uvp);		
+	DetChk_Occur	(WF_UNDR_Type, WF_F_Type,	WF_CUVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.mincv, (u32)g_sWF_Spec[WF_F_Type].u16_Uvp);
+	DetChk_Release	(WF_UNDR_Type, WF_W_Type,	WF_CUVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.mincv, (u32)g_sWF_Spec[WF_F_Type].u16_Uvp);	//Warning 해지시만
+
+	/*P_OVP*/
+	DetChk_Occur	(WF_OVER_Type, WF_W_Type,	WF_P_OVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.pv[PVINP], (u32)g_sWF_Spec[WF_W_Type].u16_P_Ovp);		
+	DetChk_Occur	(WF_OVER_Type, WF_F_Type,	WF_P_OVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.pv[PVINP], (u32)g_sWF_Spec[WF_F_Type].u16_P_Ovp);
+	DetChk_Release	(WF_OVER_Type, WF_W_Type,	WF_P_OVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.pv[PVINP], (u32)g_sWF_Spec[WF_F_Type].u16_P_Ovp);	//Warning 해지시만
+
+	/*P_UVP*/
+	DetChk_Occur	(WF_UNDR_Type, WF_W_Type,	WF_P_UVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.pv[PVINP], (u32)g_sWF_Spec[WF_W_Type].u16_P_Uvp);		
+	DetChk_Occur	(WF_UNDR_Type, WF_F_Type,	WF_P_UVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.pv[PVINP], (u32)g_sWF_Spec[WF_F_Type].u16_P_Uvp);
+	DetChk_Release	(WF_UNDR_Type, WF_W_Type,	WF_P_UVP_Type, DET_CHECK_COUNT_DEF, (u32)RackPkt.pv[PVINP], (u32)g_sWF_Spec[WF_F_Type].u16_P_Uvp);	//Warning 해지시만
+
+
+	/* */
+
+
+
+
+
+
+
+}
+
+

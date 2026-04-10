@@ -1,0 +1,11 @@
+../User_Src/GAS_sgxbld1.c:31:6:GAS_Init	8	static
+../User_Src/GAS_sgxbld1.c:59:6:GAS_CanRxParsing	8	static
+../User_Src/GAS_sgxbld1.c:109:6:GAS_TimeoutCheck	8	static
+../User_Src/GAS_sgxbld1.c:125:6:GAS_DiagnosicCheck	0	static
+../User_Src/GAS_sgxbld1.c:175:6:GAS_Proc	8	static
+../User_Src/GAS_sgxbld1.c:191:5:GAS_GetErrStatus	0	static
+../User_Src/GAS_sgxbld1.c:196:4:GAS_GetTemperature	0	static
+../User_Src/GAS_sgxbld1.c:201:5:GAS_GetHydrogenPercent	0	static
+../User_Src/GAS_sgxbld1.c:206:4:GAS_GetVoltage	0	static
+../User_Src/GAS_sgxbld1.c:211:4:GAS_GetHumidity	0	static
+../User_Src/GAS_sgxbld1.c:216:4:GAS_GetRollCounter	0	static

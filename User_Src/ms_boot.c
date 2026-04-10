@@ -1,0 +1,168 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(boot)                  							 					*
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-12-22                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_boot.c
+\author             KKD
+\date               2025-12-22 
+\brief              모니터 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-12-22     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include "ms_boot.h"
+#include "ms_rs232_mon.h"
+
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+u8			fBoot_mode = 0;
+u32		GetAllPageCnt;
+u32		CalAllPageCnt;
+Pkt_Mem_Boot	PktMemBoot[2];
+Pkt_Flash_Info	PktFlashInfo[2];
+
+
+
+
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+
+u8 Boot_FlashWritePage64(void) {
+	static u32 Pre_Addr;
+	u32 flashaddr;
+	u16 chksum;
+	u32 ldata;
+	u8 status = 1U;
+
+	PktMemBoot[1].canid = PktMemBoot[0].canid;
+	PktMemBoot[1].addr = PktMemBoot[0].addr;
+	PktMemBoot[1].last = PktMemBoot[0].last;
+	PktMemBoot[1].pagechksum = PktMemBoot[0].pagechksum;
+
+	flashaddr = PktMemBoot[1].addr + BOOTSTARTADDR;							/* ((u32)0x08024000) */
+
+	/* Check Address 64byte(0x40) Increase */
+	if(PktMemBoot[1].addr == (u32)STARTPOSITION) {
+		CalTotalChkSum = 0;
+		CalAllPageCnt = 0;
+	} else {
+		if((Pre_Addr + FLASH_SECTOR_SIZE) != PktMemBoot[1].addr) {
+			status = 0U;
+		}
+	}
+	Pre_Addr = PktMemBoot[1].addr;
+	CalAllPageCnt++;
+
+
+	/*  Flash Write Page CheckSum Verify, PktMemBoot[0] */
+	chksum = 0;
+	for(u32 k = 0; k < FLASH_SECTOR_SIZE; k++) {
+		chksum += PktMemBoot[0].rxdat[k];
+	}
+	if(chksum != PktMemBoot[1].pagechksum) {
+ 	  status = 0U;
+	}
+
+	/*  STM32F107xC Flash Erase, 2KBYTE(2048=0x800) ALL 0xFF */
+	ldata = (flashaddr%FLASHPAGESIZE);
+	if(ldata == 0U) {
+		Flash_Stm32F407_Erase(flashaddr, 1);								/* Duration of time-22ms */
+	}
+	/* Flash_Erase(BOOTSTARTADDR, 64); */									/* No Operator-XXX */
+
+
+	/*  STM32F107xC Flash Write */
+	Flash_Stm32f407_Write(flashaddr, (void *)PktMemBoot[0].rxdat, FLASH_SECTOR_SIZE/sizeof(u32));		/* Duration of time-2.2ms */
+
+
+	/*  STM32F107xC Flash Read, PktMemBoot[1] */
+	for(u32 k = 0; k < FLASH_SECTOR_SIZE; k++) {									/* Duration of time-82us */
+		PktMemBoot[1].rxdat[k] = *(__IO u8 *)flashaddr++;
+		/* flashaddr += sizeof(u8); */
+	}
+
+	/* Flash Read Page CheckSum Verify */
+	chksum = 0;
+	for(u32 k = 0; k < FLASH_SECTOR_SIZE; k++)  {
+ 		chksum += PktMemBoot[1].rxdat[k];
+	}
+	if(chksum !=  PktMemBoot[1].pagechksum) {
+	   status = 0U;
+	}
+	CalTotalChkSum += chksum;
+
+	return status;
+}
+
+void Boot_Function(void) 
+{
+	if(PktFlashInfo[0].boot == 0U){	//qac
+
+	}
+
+#if 0
+	if((fRcvCan1Boot != FALSE) || (fRcvUart1Boot != FALSE)) {
+
+	//CanBootBreak1ms = 200
+		if(fRcvCan1Boot == 1U) {
+			fRcvCan1Boot = 0U;
+			//memcpy((PktRx1Can+1), (PktRx1Can), sizeof(Pkt_CanRx_CAN));		// RxBuffer[0] => UsingBuffer[1]
+			//Tx1CanBoot(PktRx1Can[1].canid);
+		} else if(fRcvUart1Boot != 0U) {
+			fRcvUart1Boot = 0U;
+		} else {
+		}
+/*
+	if((Cnt1000ms & 0x01U) != 0U) {										// per 200ms
+		CntLedVital = 30;
+		CntLedFault = 30;
+		CntLedRelay = 30;
+		CntLedCom = 30;
+	   }
+	   //continue;
+	  */
+   }
+#else
+   if(fRcvUart1Boot != FALSE) {
+		if(fRcvUart1Boot != 0U) {
+		   fRcvUart1Boot = 0U;
+	   } else {
+	   }
+   /*
+	   if((Cnt1000ms & 0x01U) != 0U) {									   // per 200ms
+		   CntLedVital = 30;
+		   CntLedFault = 30;
+		   CntLedRelay = 30;
+		   CntLedCom = 30;
+		  }
+		  //continue;
+		 */
+	  }
+#endif
+   if((fBoot_mode == ENTER_CANBOOT) || (fBoot_mode == ENTER_UARTBOOT)) {
+		if(fBoot_mode == ENTER_UARTBOOT) {
+				Uart_GetRx1DmatoUartBuf();
+				if(Uart_ChkUartRx1Dma() != 0U) {										// per 10ms
+					Uart1_Uart1BootFunction();
+					for(u32 mm = 0; mm < sizeof(Pkt_Uart1_Rxd); mm++) {
+						Rx1UartBuf[mm] = 0x00;
+					}
+				}
+		}
+		//if(CanBootBreak1ms == 0U) {
+		//	fBoot_mode = EXIT;
+		//}
+	   //continue;
+   }
+}
+

@@ -1,0 +1,65 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_gpio.h
+\author             KKD
+\date               2025-11-21 
+\brief              GPIO 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_GPIO_H__
+#define __MS_GPIO_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_main.h>
+
+/* Exported define ---------------------------------------------------------------------------------*/
+/* Exported macro ----------------------------------------------------------------------------------*/
+#define GPIO_READ_ACTIVE_LOW(port, pin)   (((port)->IDR & (pin)) ? 0U : 1U)
+#define GPIO_WRITE(port, pin, val)   ((port)->BSRR = ((val)==0U ? ((pin)<<16) : (pin)))
+#define GPIO_TOGGLE(port,pin)   ((port)->ODR ^= (pin))
+
+/* Exported typedef --------------------------------------------------------------------------------*/
+/* Exported variables ------------------------------------------------------------------------------*/
+/* Exported function prototypes --------------------------------------------------------------------*/
+/*
+//_DOUT
+static inline void GPIO_DOut_LYel_VIT(u8 out);		
+static inline void GPIO_DOut_LRed_DET(u8 out);		
+static inline void GPIO_DOut_LGre_CHG(u8 out);		
+static inline void GPIO_DOut_LOrg_DCH(u8 out);		
+
+static inline void GPIO_DOut_SPI1_CS1(u8 out);   
+static inline void GPIO_DOut_SPI1_CS2(u8 out);   
+static inline void GPIO_DOut_SPI2_CS1(u8 out);   
+static inline void GPIO_DOut_SPI2_CS2(u8 out);   
+
+//_DIN
+static inline u8 GPIO_DIN_MTOP_FUS(void);             				
+static inline u8 GPIO_DIN_MBTM_FUS(void);     
+static inline u8 GPIO_DIN_MTOP_RLY(void);     
+static inline u8 GPIO_DIN_MBTM_RLY(void);     
+static inline u8 GPIO_DIN_BBTM_FUS(void);	  
+static inline u8 GPIO_DIN_BTOP_RLY(void);     
+static inline u8 GPIO_DIN_BBTM_RLY(void);     
+
+static inline u8 GPIO_DIN_ON_CHG(void);        
+static inline u8 GPIO_DIN_ON_BAT(void);        
+
+//Toggle
+static inline void GPIO_DOut_Tp1_toggle(void);							
+static inline void GPIO_DOut_Tp2_toggle(void);							
+static inline void GPIO_DOut_Tp3_toggle(void);							
+static inline void GPIO_DOut_Tp4_toggle(void);							
+static inline void GPIO_DOut_Rly_toggle(void);							
+*/
+
+#endif //__MS_GPIO_H__

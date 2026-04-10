@@ -1,0 +1,68 @@
+﻿/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(GPIO)                                                               *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_gpio.c
+\author             KKD
+\date               2025-11-21 
+\brief              GPIO 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_gpio.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+
+
+
+
+/* Private functions ------------------------------------------------------------------------------*/
+
+//_DOUT
+static inline void GPIO_DOut_LYel_VIT(u8 out)		{ GPIO_WRITE(GPIOE, GPIO_PIN_8,  out); }
+static inline void GPIO_DOut_LRed_DET(u8 out)		{ GPIO_WRITE(GPIOE, GPIO_PIN_9,  out); }
+static inline void GPIO_DOut_LGre_CHG(u8 out)		{ GPIO_WRITE(GPIOE, GPIO_PIN_10, out); }
+static inline void GPIO_DOut_LOrg_DCH(u8 out)		{ GPIO_WRITE(GPIOE, GPIO_PIN_11, out); }
+
+static inline void GPIO_DOut_SPI1_CS1(u8 out)   	{ GPIO_WRITE(GPIOE, GPIO_PIN_0,  out); }
+static inline void GPIO_DOut_SPI1_CS2(u8 out)   	{ GPIO_WRITE(GPIOE, GPIO_PIN_1,  out); }
+static inline void GPIO_DOut_SPI2_CS1(u8 out)   	{ GPIO_WRITE(GPIOC, GPIO_PIN_14, out); }
+static inline void GPIO_DOut_SPI2_CS2(u8 out)   	{ GPIO_WRITE(GPIOC, GPIO_PIN_15, out); }
+
+
+//_DIN
+static inline u8 GPIO_DIN_MTOP_FUS(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_2); } 
+static inline u8 GPIO_DIN_MBTM_FUS(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_3); }
+static inline u8 GPIO_DIN_MTOP_RLY(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_4); }
+static inline u8 GPIO_DIN_MBTM_RLY(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_5); }
+static inline u8 GPIO_DIN_BBTM_FUS(void)	       { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_6); }
+static inline u8 GPIO_DIN_BTOP_RLY(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_7); }
+static inline u8 GPIO_DIN_BBTM_RLY(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOG, GPIO_PIN_8); }
+
+static inline u8 GPIO_DIN_ON_CHG(void)             { return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_9);}
+static inline u8 GPIO_DIN_ON_BAT(void)             { return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_10);}
+
+static inline u8 GPIO_DIN_LHD_Open(void)           { return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_12);}
+static inline u8 GPIO_DIN_LHD_Short(void)          { return GPIO_READ_ACTIVE_HIGH(GPIOD, GPIO_PIN_13);}
+
+
+//Toggle
+static inline void GPIO_DOut_Tp1_toggle(void)	{ GPIO_TOGGLE(GPIOA, GPIO_PIN_7); }
+static inline void GPIO_DOut_Tp2_toggle(void)	{ GPIO_TOGGLE(GPIOB, GPIO_PIN_15); }
+static inline void GPIO_DOut_Tp3_toggle(void)	{ GPIO_TOGGLE(GPIOF, GPIO_PIN_10); }
+static inline void GPIO_DOut_Tp4_toggle(void)	{ GPIO_TOGGLE(GPIOG, GPIO_PIN_14); }
+static inline void GPIO_DOut_Rly_toggle(void)	{ GPIO_TOGGLE(GPIOD, GPIO_PIN_0); }
+
+

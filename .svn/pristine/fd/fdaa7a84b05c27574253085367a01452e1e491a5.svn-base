@@ -1,0 +1,47 @@
+/**
+\file               MISUM_util.h
+\author             jkpark
+\date               2025-11-25
+\brief              공용으로 사용하는 함수
+*/
+/************************ (C) COPYRIGHT 2012 Misum ***************************
+* History:
+* 2025-11-25  v0.01    Create
+********************************************************************************/
+#ifndef __MISUM_UTIL_H__
+#define __MISUM_UTIL_H__
+/* Includes ------------------------------------------------------------------*/
+#include <stdio.h>
+#include <ms_config.h>
+
+/* Exported define ------------------------------------------------------------*/
+
+/* Exported macro -------------------------------------------------------------*/
+/* Exported typedef -----------------------------------------------------------*/
+typedef struct{
+    unsigned char   *pBuffer;
+    int    bufSize;
+    int    index;
+}BufferInfoType;
+
+typedef union{
+    char*   charType;
+    short*  shortType;
+    long*   longType;
+}typeConvertor;
+
+/* Exported variables ---------------------------------------------------------*/
+/* Exported function prototypes -----------------------------------------------*/
+int BufferInit  ( BufferInfoType *bufInfo, unsigned char *buffer, int bufSize );
+int BufferWrite ( BufferInfoType *bufInfo, unsigned char *data, int writeSize, int *usedSize );
+int BufferRead  ( BufferInfoType *bufInfo, unsigned char *data, int reqSize, int *readSize );
+int BufferCheck ( BufferInfoType *bufInfo, int dataSize, int *remainSize);
+
+void *ms_memcpy_s( void *dest, unsigned long destSize, void *src, unsigned long copySize );
+void *ms_memset( void *dest, int c, unsigned long n );
+
+unsigned short UpdateFCS(unsigned short nFCS, unsigned char *pBlock,unsigned long nSize);
+unsigned short UpdateChecksum(unsigned short checkSum, unsigned char *pBuffer,unsigned long nBytes);
+
+#endif //__MISUM__UTIL_H__
+

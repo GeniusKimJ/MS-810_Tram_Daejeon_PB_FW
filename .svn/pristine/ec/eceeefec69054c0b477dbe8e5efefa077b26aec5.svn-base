@@ -1,0 +1,90 @@
+﻿/**================================================================================================*
+*       Header File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P((bms process(V/C/T Cal or Calibration)))                            *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-24                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_process.h
+\author             KKD
+\date               2025-11-24 
+\brief              (bms process(V/C/T Cal or Calibration))
+*********************************************g_sAd6815Data
+* History:
+* 2025-11-24     v0.01    KKD    Create
+*==================================================================================================*/
+#ifndef __MS_PROCESS_H__
+#define __MS_PROCESS_H__
+/* Includes ---------------------------------------------------------------------------------------*/
+
+#include "ms_adc.h"
+#include "ms_uart1.h"
+#include "ms_uart2.h"
+#include "ms_uart3.h"
+#include "ms_can.h"
+#include "ms_gpio.h"
+#include "ms_flash.h"
+#include "ms_timer.h"
+
+#include "AFE_BasicConfig.h"
+#include "AFE_adbms6815.h"
+#include "AFE_adbms6815_SM.h"
+#include "EEP_m24256a.h"
+#include "EEP_m24m02a.h"
+#include "FIRE_phsc220xcr.h"
+#include "GAS_sgxbld1.h"
+#include "HALL_cab1500.h"
+#include "HALL_s124.h"
+#include "HUMI_sht3xdis.h"
+#include "IMD_gqimdu2.h"
+#include "RTC_mcp7940a.h"
+
+#include "ms_btms.h"
+#include "ms_det.h"
+#include "ms_process.h"
+#include "ms_mvb.h"
+#include "ms_relay.h"
+#include "ms_soc.h"
+#include "ms_temp.h"
+#include "ms_det.h"
+#include "ms_alarm.h"
+#include "ms_boot.h"
+
+
+
+
+
+/* Exported define ---------------------------------------------------------------------------------*/
+#define	DLYBALO				(3000U/100U)                                                  //KKD 2025-12-19 bal chk time
+#define	DLYBALR				(3000U/100U)                                                  //KKD 2025-12-19 bal chk time
+
+#define MOVCNT	20
+
+
+/* Exported macro ----------------------------------------------------------------------------------*/
+/* Exported typedef --------------------------------------------------------------------------------*/
+typedef enum{
+	MOV_CURR_HI = 0,
+	MOV_CURR_LO = 1,
+	MAX_MOV 	= 2
+}eMovAvg;
+
+
+
+/* Exported variables ------------------------------------------------------------------------------*/
+
+
+/* Exported function prototypes --------------------------------------------------------------------*/
+void	Proc_Bms_Init(void);
+
+s32		Proc_MovAvg(s32 u32Data, eMovAvg ePos);
+
+
+
+
+
+
+#endif //__MS_PROCESS_H__

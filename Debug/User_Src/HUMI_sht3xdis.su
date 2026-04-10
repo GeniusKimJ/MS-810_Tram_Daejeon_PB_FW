@@ -1,0 +1,8 @@
+../User_Src/HUMI_sht3xdis.c:41:11:HUMI_CalcCrc	0	static
+../User_Src/HUMI_sht3xdis.c:64:13:HUMI_ReadSensor	40	static
+../User_Src/HUMI_sht3xdis.c:113:6:HUMI_Init	0	static
+../User_Src/HUMI_sht3xdis.c:128:6:HUMI_DiagnosicCheck	0	static
+../User_Src/HUMI_sht3xdis.c:173:6:HUMI_Proc	8	static
+../User_Src/HUMI_sht3xdis.c:180:7:HUMI_GetHUMIdity_RH	0	static
+../User_Src/HUMI_sht3xdis.c:185:7:HUMI_GetTemperature_C	0	static
+../User_Src/HUMI_sht3xdis.c:190:5:HUMI_GetErrStatus	0	static

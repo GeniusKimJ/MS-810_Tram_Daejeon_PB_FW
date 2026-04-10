@@ -1,0 +1,54 @@
+/**================================================================================================*
+*       Source File                                                                                *
+*==================================================================================================*
+*       [Project]    : ms_810P(Cell/Temp sensor - spi)                                             *
+*       [Version]    : 1.0                                                                         *
+*       [Start]      : 2025-11-21                                                                  *
+*       [Inventor]   : www.misum.co.kr                                                             *
+*       Copyright(C) 2025 Misum Systech Co.,Ltd. All Rights Reserved.                              *
+*==================================================================================================*
+** For Doxygen ******************************
+\file               ms_timer.c
+\author             KKD
+\date               2025-11-21 
+\brief              Timer 동작을 위한 코드.
+*********************************************
+* History:
+* 2025-11-21     v0.01    KKD    Create
+*==================================================================================================*/
+/* Includes ---------------------------------------------------------------------------------------*/
+#include <ms_timer.h>
+
+/* Private define ---------------------------------------------------------------------------------*/
+/* Private macro ----------------------------------------------------------------------------------*/
+/* Private typedef --------------------------------------------------------------------------------*/
+/* Private variables ------------------------------------------------------------------------------*/
+/* Private function prototypes --------------------------------------------------------------------*/
+/* Private functions ------------------------------------------------------------------------------*/
+u32 DWT_Delay_Init(void) {
+	u8 	status = 0;
+	CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; 						// ~0x01000000;	Disable TRC
+	CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; 						// 0x01000000;	Enable TRC
+
+	DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; 									// ~0x00000001;	Disable clock cycle counter
+	DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; 									// 0x00000001;	Enable  clock cycle counter
+	DWT->CYCCNT = 0;														// Reset the clock cycle counter value
+
+	 __ASM __IO ("NOP");													// 3 NO OPERATION instructions
+	 __ASM __IO ("NOP");
+	 __ASM __IO ("NOP");
+
+	 if(DWT->CYCCNT > 0U) {
+		status = 0U;														// Check if clock cycle counter has started
+	 } else {
+		status = 1U; 														// clock cycle counter not started
+	 }
+
+	 return status;
+}
+
+
+
+
+
+

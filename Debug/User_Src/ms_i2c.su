@@ -1,0 +1,2 @@
+../User_Src/ms_i2c.c:41:12:I2C_Init	0	static
+../User_Src/ms_i2c.c:46:12:I2C_Proc	0	static

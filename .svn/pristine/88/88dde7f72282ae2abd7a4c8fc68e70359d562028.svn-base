@@ -1,0 +1,55 @@
+﻿/**
+\file               MISUM_Util.h
+\author             jkpark
+\date               2025-11-25 
+\brief              공용으로 사용하는 함수
+*/
+/************************ (C) COPYRIGHT 2012 Misum ***************************
+* History:
+* 2025-11-25  v0.01    Create
+********************************************************************************/
+#ifndef __MISUM_UTIL_H__
+#define __MISUM_UTIL_H__
+/* Includes ------------------------------------------------------------------*/
+#include <stdio.h>
+#include <ms_config.h>
+
+/* Exported define ------------------------------------------------------------*/
+/* Exported macro -------------------------------------------------------------*/
+
+static inline uint16_t BYTE_15_08(uint8_t x){ return (uint16_t)((u8)(( (x) >> 8 ) & 0xFF ));}
+static inline uint16_t BYTE_07_00(uint8_t x){ return (uint16_t)((u8)(   (x)        & 0xFF ));}
+
+
+/* Exported typedef -----------------------------------------------------------*/
+typedef struct{
+    unsigned char   *pBuffer;
+    volatile int head;     // Write index
+    volatile int tail;     // Read index
+    volatile int count;    // Data count
+    int bufSize;
+}BufferInfoType;
+
+typedef union{
+    char*   charType;
+    short*  shortType;
+    long*   longType;
+}typeConvertor;
+
+/* Exported variables ---------------------------------------------------------*/
+/* Exported function prototypes -----------------------------------------------*/
+msStatus_t Util_BufferInit  ( BufferInfoType *bufInfo, unsigned char *buffer, int bufSize );
+msStatus_t Util_BufferWrite ( BufferInfoType *bufInfo, unsigned char *data, int writeSize, int *usedSize );
+msStatus_t Util_BufferRead  ( BufferInfoType *bufInfo, unsigned char *data, int reqSize, int *readSize );
+msStatus_t Util_BufferCheck ( BufferInfoType *bufInfo, int dataSize, int *remainSize);
+
+msStatus_t Util_GetBinaryRange(const int *arr, int n, int target, int *start, int *end);
+    
+void *Util_memcpy_s( void *dest, unsigned long destSize, void *src, unsigned long copySize );
+void *Util_memset( void *dest, int c, unsigned long n );
+
+unsigned short Util_UpdateFCS(unsigned short nFCS, unsigned char *pBlock,unsigned long nSize);
+unsigned short Util_UpdateChecksum(unsigned short checkSum, unsigned char *pBuffer,unsigned long nBytes);
+
+#endif //__MISUM__UTIL_H__
+
