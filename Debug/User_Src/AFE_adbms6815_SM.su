@@ -1,6 +1,6 @@
 ../User_Src/AFE_adbms6815_SM.c:44:13:SM_Delay_us_YieldCan	16	static,ignoring_inline_asm
 ../User_Src/AFE_adbms6815_SM.c:703:6:Adbms6815_SM_Start	0	static
-../User_Src/AFE_adbms6815_SM.c:846:6:Adbms6815_SM_Daisy_Read_to_Diag	96	static
+../User_Src/AFE_adbms6815_SM.c:846:6:Adbms6815_SM_Daisy_Read_to_Diag	112	static
 ../User_Src/AFE_adbms6815_SM.c:62:13:SM01_Step	24	static
 ../User_Src/AFE_adbms6815_SM.c:80:13:SM02_Step	24	static
 ../User_Src/AFE_adbms6815_SM.c:98:13:SM04_Step	40	static

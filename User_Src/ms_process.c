@@ -340,36 +340,94 @@ void Proc_Calibration(Enum_CalPos_Type calpos)
 		//todo . . .
 		//s124 offset
 	}else if(calpos == CalPos_Pv_In_Type){
-			g_sAdcGain.gain_pv_in = (u16)(float)(HV_GAIN_CAL_BTMS_VPV * ((float)g_sMn.mn_ref_data / (float)RackPkt.pv[PVINP]) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_PV_IN), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_pv_in, sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── PV IN (CPV) 캘리브레이션 (복리 없는 방식) ──────────────────────────
+		 * 공식: gain_u16 = ref × 10000 / ADC15_TO_HV_mV(adc_raw)
+		 *  - adc_raw은 HW 고정값 → 반복 캘 시 항상 동일한 gain 계산 (복리 원천 차단)
+		 *  - 이전 방식(RackPkt.pv[PVINP] 사용): gain 보정된 값 → 매번 누적 문제
+		 *  검증: pv = ADC15_TO_HV_mV(adc)×gain×0.0001 = ADC15_TO_HV_mV×(ref×10000/HV_mV)×0.0001 = ref ✓ */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN4_CPV);
+			if(s32_adc_raw > 0) {
+				float f32_hv_mv = (float)ADC15_TO_HV_mV(s32_adc_raw);
+				if(f32_hv_mv > 0.0f) {
+					g_sAdcGain.gain_pv_in = (u16)((float)g_sMn.mn_ref_data * 10000.0f / f32_hv_mv);
+					EEP_Write_Gain_PvIN(g_sAdcGain.gain_pv_in);
+					HAL_Delay(10);
+				}
+			}
+		}
 	}else if(calpos == CalPos_Pv_Ou_Type){
-			g_sAdcGain.gain_pv_ou = (u16)(float)(HV_GAIN_CAL_BTMS_VPV * ((float)g_sMn.mn_ref_data / (float)RackPkt.pv[PVOUT]) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_PV_OU), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_pv_ou, sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── PV OUT (VPV) 캘리브레이션 (복리 없는 방식) */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN5_VPV);
+			if(s32_adc_raw > 0) {
+				float f32_hv_mv = (float)ADC15_TO_HV_mV(s32_adc_raw);
+				if(f32_hv_mv > 0.0f) {
+					g_sAdcGain.gain_pv_ou = (u16)((float)g_sMn.mn_ref_data * 10000.0f / f32_hv_mv);
+					EEP_Write_Gain_PvOU(g_sAdcGain.gain_pv_ou);
+					HAL_Delay(10);
+				}
+			}
+		}
 	}else if(calpos == CalPos_Pv_Bt_Type){
-			g_sAdcGain.gain_pv_bt = (u16)(float)(HV_GAIN_CAL_BTMS_VPV * ((float)g_sMn.mn_ref_data / (float)RackPkt.pv[PVBTM]) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_PV_BT), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_pv_bt, sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── PV BT (TVPV) 캘리브레이션 (복리 없는 방식) */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN6_TVPV);
+			if(s32_adc_raw > 0) {
+				float f32_hv_mv = (float)ADC15_TO_HV_mV(s32_adc_raw);
+				if(f32_hv_mv > 0.0f) {
+					g_sAdcGain.gain_pv_bt = (u16)((float)g_sMn.mn_ref_data * 10000.0f / f32_hv_mv);
+					EEP_Write_Gain_PvBT(g_sAdcGain.gain_pv_bt);
+					HAL_Delay(10);
+				}
+			}
+		}
 	}else if(calpos == CalPos_Ax_24V_Type){
-			g_sAdcGain.gain_ax_24v = (u16)(float)(AUX24_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp24v) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX24), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_24v , sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── 24V 캘리브레이션 (복리 없는 방식) ──────────────────────────────
+		 * 공식: gain_u16 = ref_mV × 10000 / adc_raw
+		 *  검증: ax_24v = adc_raw × gain × 0.0001 = adc_raw × (ref×10000/adc_raw) × 0.0001 = ref ✓ */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN0_24V);
+			if(s32_adc_raw > 0) {
+				g_sAdcGain.gain_ax_24v = (u16)((float)g_sMn.mn_ref_data * 10000.0f / (float)s32_adc_raw);
+				EEP_Write_Gain_Ax24v(g_sAdcGain.gain_ax_24v);
+				HAL_Delay(10);
+			}
+		}
 	}else if(calpos == CalPos_Ax_13V_Type){
-		if(g_sAdcData.supp13v > 0u){
-			g_sAdcGain.gain_ax_13v = (u16)(float)(AUX13_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp13v) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX13), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_13v , sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── 13V 캘리브레이션 (복리 없는 방식) */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN1_13V);
+			if(s32_adc_raw > 0) {
+				g_sAdcGain.gain_ax_13v = (u16)((float)g_sMn.mn_ref_data * 10000.0f / (float)s32_adc_raw);
+				EEP_Write_Gain_Ax13v(g_sAdcGain.gain_ax_13v);
+				HAL_Delay(10);
+			}
 		}
 	}else if(calpos == CalPos_Ax_5V_Type){
-			g_sAdcGain.gain_ax_5v = (u16)(float)(AUX5_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp5v) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX5), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_5v , sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── 5V 캘리브레이션 (복리 없는 방식) */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN2_5V);
+			if(s32_adc_raw > 0) {
+				g_sAdcGain.gain_ax_5v = (u16)((float)g_sMn.mn_ref_data * 10000.0f / (float)s32_adc_raw);
+				EEP_Write_Gain_Ax5v(g_sAdcGain.gain_ax_5v);
+				HAL_Delay(10);
+			}
+		}
 	}else if(calpos == CalPos_Ax_3V_Type){
-			g_sAdcGain.gain_ax_3v = (u16)(float)(AUX3_GAIN * ((float)g_sMn.mn_ref_data / (float)g_sAdcData.supp3v) * 10000.0f);
-			HAL_I2C_Mem_Write(&hi2c1, SLA24EEP, (u16)(EEP_AX3), I2C_MEMADD_SIZE_16BIT, (void*)&g_sAdcGain.gain_ax_3v , sizeof(float), 50);
-			HAL_Delay(10);
+		/* ── 3.3V 캘리브레이션 (복리 없는 방식) */
+		{
+			s32 s32_adc_raw = ADC_GetStmAdc15bit(ID_ADIN3_3V3);
+			if(s32_adc_raw > 0) {
+				g_sAdcGain.gain_ax_3v = (u16)((float)g_sMn.mn_ref_data * 10000.0f / (float)s32_adc_raw);
+				EEP_Write_Gain_Ax3v(g_sAdcGain.gain_ax_3v);
+				HAL_Delay(10);
+			}
+		}
 	}
+
+	/* 캘리브레이션 완료 후 현재 게인값을 CAN 0x701 로 1회 송신 */
+	CAN_Tx_GainValues();
 
 }
 

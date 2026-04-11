@@ -20,3 +20,4 @@
 ../User_Src/ms_can.c:377:6:HAL_CAN_RxFifo0MsgPendingCallback	48	static
 ../User_Src/ms_can.c:630:6:Can_TxFifo	32	static
 ../User_Src/ms_can.c:650:6:Can_TxProc	48	static
+../User_Src/ms_can.c:794:6:CAN_Tx_GainValues	48	static

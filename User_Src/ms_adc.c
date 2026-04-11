@@ -167,99 +167,92 @@ void ADC_UpdateStmAdc15bit( void ){
 
 // PC0 - hallsensor c
 void ADC1_Ch10_GetPIL(void) {
-	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN10_PIL );
-	double d64_buf[1] = {0};
+	double d64_adc	= (double)ADC_GetStmAdc15bit( ID_ADIN10_PIL );
+	double d64_tmp	= 0;
 
 	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*CONST_AUX24_15BIT;
-	g_sAdcData.s124_low = (u16)d64_buf[0];
+	//d64_tmp = d64_adc*CONST_AUX24_15BIT;
+	g_sAdcData.s124_low = (u16)d64_tmp;
 }
 
 void ADC1_Ch11_GetPIH(void) {
-	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN11_PIH );
-	double d64_buf[1] = {0};
+	double d64_adc	= (double)ADC_GetStmAdc15bit( ID_ADIN11_PIH );
+	double d64_tmp	= 0;
 
 	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*CONST_AUX24_15BIT;
-	g_sAdcData.s124_high = (u16)d64_buf[0];
+	//d64_tmp = d64_adc * CONST_AUX24_15BIT;
+	g_sAdcData.s124_high = (u16)d64_tmp;
 }
 
 
-// PA0 -24V	
+// PA0 -24V
 void ADC1_Ch0_GetAd24V(void) {
 	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN0_24V );
-	double d64_buf[1] = {0};
+	double d64_tmp = 0.0;
 
-	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc* (ADC_LSB_15BIT_MV / (AUX24_GAIN * (g_sAdcGain.gain_ax_24v * 0.0001f)));
-	g_sAdcData.supp24v = (u16)d64_buf[0];
+	/* gain_ax_24v [u16] = (ADC_LSB_15BIT_MV / AUX24_DEF_GAIN) * 10000  (기본값 ~11967)
+	 * 캘리브레이션 후: ref_mV * 10000 / adc_raw  로 갱신됨
+	 * ax_24v [mV] = adc * gain * 0.0001 */
+	if(g_sAdcGain.gain_ax_24v > 0u) {
+		d64_tmp = d64_adc * ((double)g_sAdcGain.gain_ax_24v * 0.0001f);
+	}
+	g_sAdcData.ax_24v = (u16)d64_tmp;
 }
 
 // PA1 - 13V
 void ADC1_Ch1_GetAd13V(void) {
 	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN1_13V );
-	double d64_buf[1] = {0};
+	double d64_tmp = 0;
 
-	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*(g_sAdcGain.gain_ax_13v * 0.0001f);
-	g_sAdcData.supp13v = (u16)d64_buf[0];
+	d64_tmp = d64_adc*(g_sAdcGain.gain_ax_13v * 0.0001f);
+	g_sAdcData.ax_13v = (u16)d64_tmp;
 }
 
 // PA2 - 5V
 void ADC1_Ch2_GetAd5V0(void) {
 	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN2_5V );
-	double d64_buf[1] = {0};
+	double d64_tmp = 0;
 
-	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*(g_sAdcGain.gain_ax_5v * 0.0001f);
-	g_sAdcData.supp5v = (u16)d64_buf[0];
+	d64_tmp = d64_adc*(g_sAdcGain.gain_ax_5v * 0.0001f);
+	g_sAdcData.ax_5v = (u16)d64_tmp;
 }
 // PA3 - 3.3V
 void ADC1_Ch3_GetAd3V3(void) {
 	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN3_3V3 );
-	double d64_buf[1] = {0};
+	double d64_tmp = 0;
 
-	///RackPkt.aux = fstmadc * CONST2R5;
-	d64_buf[0] = d64_adc*(g_sAdcGain.gain_ax_3v * 0.0001f);
-	g_sAdcData.supp3v = (u16)d64_buf[0];
+	d64_tmp = d64_adc*(g_sAdcGain.gain_ax_3v * 0.0001f);
+	g_sAdcData.ax_3v = (u16)d64_tmp;
 }
 
 
 // PA3 -CPV	
-void ADC2_Ch0_GetCPV(void) {
-	double d64_adc = 0;
-	double d64_buf = 0;
-	double d64_res = 0;
-
-	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN4_CPV );
-	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_in * 0.0001f));	
-	d64_res = d64_buf * (double)0.01f;
+void ADC2_Ch0_GetCPV(void) 
+{
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN4_CPV );
+	double d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_in * 0.0001f));	
+	double d64_res = d64_buf * (double)0.01f;
+	
 	g_sAdcData.cpv = (u16)d64_res;
 	g_sAdcData.cpvAdc = (u16)d64_adc;
 }
 
 // PA4 - VPV
-void ADC2_Ch1_GetAVPV(void) {
-	double d64_adc = 0;
-	double d64_buf = 0;
-	double d64_res = 0;
-
-	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN5_VPV );
-	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_ou * 0.0001f));
-	d64_res = d64_buf * (double)0.01f;
+void ADC2_Ch1_GetAVPV(void) 
+{
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN5_VPV );
+	double d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_ou * 0.0001f));
+	double d64_res = d64_buf * (double)0.01f;
 	g_sAdcData.vpv = (u16)d64_res;
 	g_sAdcData.vpvAdc = (u16)d64_adc;
 }
 
 // PA5 - BTMS VPV
-void ADC2_Ch2_GetBtmsVPV(void) {
-	double d64_adc = 0;
-	double d64_buf = 0;
-	double d64_res = 0;
-
-	d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN6_TVPV );
-	d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_bt * 0.0001f));
-	d64_res = d64_buf * (double)0.01f;
+void ADC2_Ch2_GetBtmsVPV(void) 
+{
+	double d64_adc = (double)ADC_GetStmAdc15bit( ID_ADIN6_TVPV );
+	double d64_buf = (double)ADC15_TO_HV_Cal(d64_adc,(g_sAdcGain.gain_pv_bt * 0.0001f));
+	double d64_res = d64_buf * (double)0.01f;
 	g_sAdcData.tvpv = (u16)d64_res;
 	g_sAdcData.tvpvAdc = (u16)d64_adc;
 }
@@ -386,13 +379,20 @@ void Adc_DefaultV_Gain(sAdcGain *pstAdcGain)
 {
 	//pstAdcGain->s124_center	= 0;
 	//pstAdcGain->s124_slope	= 0;
-	pstAdcGain->gain_pv_in	= HV_GAIN_CAL_CPV;
-	pstAdcGain->gain_pv_ou	= HV_GAIN_CAL_VPV;
-	pstAdcGain->gain_pv_bt	= HV_GAIN_CAL_BTMS_VPV;
-	pstAdcGain->gain_ax_24v	= AUX24_GAIN;
-	pstAdcGain->gain_ax_13v	= AUX13_GAIN;
-	pstAdcGain->gain_ax_5v	= AUX5_GAIN;
-	pstAdcGain->gain_ax_3v	= AUX3_GAIN;
+	/* PV gain 기본값: HW 게인 상수 × 10000  (float → u16 직접 대입하면 0 이 됨)
+	 * 사용 시: cpv = ADC15_TO_HV_mV(adc) × gain × 0.0001 × 0.01
+	 * ADC 함수에서 ADC15_TO_HV_Cal(adc, gain×0.0001) × 0.01 로 계산됨            */
+	pstAdcGain->gain_pv_in	= (u16)(HV_GAIN_CAL_CPV      * 10000.0f);					/* ~7544 */
+	pstAdcGain->gain_pv_ou	= (u16)(HV_GAIN_CAL_VPV      * 10000.0f);					/* ~7473 */
+	pstAdcGain->gain_pv_bt	= (u16)(HV_GAIN_CAL_BTMS_VPV * 10000.0f);					/* ~7553 */
+
+	/* Aux gain 기본값: (ADC_LSB_15BIT_MV / AUX_DEF_GAIN) * 10000
+	 * 사용 시: voltage_mV = adc * gain * 0.0001
+	 * AUX24_DEF_GAIN(0.084...) 을 u16 에 직접 대입하면 0 이 되므로 반드시 변환 필요 */
+	pstAdcGain->gain_ax_24v	= (u16)((ADC_LSB_15BIT_MV / AUX24_DEF_GAIN) * 10000.0f);	/* ~11967 */
+	pstAdcGain->gain_ax_13v	= (u16)((ADC_LSB_15BIT_MV / AUX13_DEF_GAIN) * 10000.0f);	/* ~6389  */
+	pstAdcGain->gain_ax_5v	= (u16)((ADC_LSB_15BIT_MV / AUX5_DEF_GAIN) * 10000.0f);		/* ~3195  */
+	pstAdcGain->gain_ax_3v	= (u16)((ADC_LSB_15BIT_MV / AUX3_DEF_GAIN) * 10000.0f);		/* ~2774  */
 
 	EEP_Write_Gain_PvIN(pstAdcGain->gain_pv_in);
 	EEP_Write_Gain_PvOU(pstAdcGain->gain_pv_ou);

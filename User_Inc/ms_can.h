@@ -224,5 +224,8 @@ void 	Can_TxProc(Enum_McuCan_Type eMcuCan);
 void 	Can_Independent(void);
 void 	Can_Independent_Init(void);
 
+/* 캘리브레이션 완료 후 게인값 송신 (Standard ID 0x701, 3프레임) */
+void	CAN_Tx_GainValues(void);
+
 //. . . can
 #endif // __MS_CAN_H__

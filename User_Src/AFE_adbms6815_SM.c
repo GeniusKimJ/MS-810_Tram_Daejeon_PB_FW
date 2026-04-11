@@ -904,7 +904,7 @@ void Adbms6815_SM_Daisy_Read_to_Diag(sAdbms6815 *pad, eRegGroup_Type eRegGroup, 
     HAL_SPI_TransmitReceive(hspi, g_u8Tx[eSpiNum][eRegGroup], g_u8Rx[eSpiNum][eRegGroup], len, 20);
     Adbms6815_ChipSel(eSpiNum, eComDir, FALSE);
 	SM_Delay_us_YieldCan(DLY10US);
-	
+
     // 4. 데이터 파싱 및 SM 로직 수행
     for(nslv = 0; nslv < NSLV; nslv++){
 		bFault = FALSE;	

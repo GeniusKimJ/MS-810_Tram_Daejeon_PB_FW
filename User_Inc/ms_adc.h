@@ -21,43 +21,40 @@
 /* Includes ---------------------------------------------------------------------------------------*/
 #include "ms_main.h"
 /* Exported define ---------------------------------------------------------------------------------*/
-#define ADC_REF_MV        	(3300.0f)
-#define ADC_15BIT_MAX     	(32767.0f)
+#define ADC_REF_MV        		(3300.0f)
+#define ADC_15BIT_MAX     		(32767.0f)
 
-#define ADC_LSB_15BIT_MV  	(ADC_REF_MV / ADC_15BIT_MAX)	// 3300.0 / 32767.0
+#define ADC_LSB_15BIT_MV  		(double)(ADC_REF_MV / ADC_15BIT_MAX)	// 3300.0 / 32767.0
 
 
 //Int Power Supply
-#define AUX3_GAIN        	(0.362987152f)
-#define CONST_AUX33_15BIT 	(ADC_LSB_15BIT_MV / AUX3_GAIN)	// [mV / count]
+#define AUX3_DEF_GAIN        	(double)(0.362987152f)
+//#define CONST_AUX33_15BIT 	(ADC_LSB_15BIT_MV / AUX3_DEF_GAIN)	// [mV / count]
 
-#define AUX5_GAIN         	(0.315245827f)
-#define CONST_AUX5_15BIT  	(ADC_LSB_15BIT_MV / AUX5_GAIN)	// [mV / count]
+#define AUX5_DEF_GAIN         	(double)(0.315245827f)
+//#define CONST_AUX5_15BIT  	(ADC_LSB_15BIT_MV / AUX5_DEF_GAIN)	// [mV / count]
 
-#define AUX13_GAIN        	(0.157612842f)
-#define CONST_AUX13_15BIT 	(ADC_LSB_15BIT_MV / AUX13_GAIN)	// [mV / count]
+#define AUX13_DEF_GAIN        	(double)(0.157612842f)
+//#define CONST_AUX13_15BIT 	(ADC_LSB_15BIT_MV / AUX13_DEF_GAIN)	// [mV / count]
 
-#define AUX24_GAIN        	(0.084152501f)
-#define CONST_AUX24_15BIT 	(ADC_LSB_15BIT_MV / AUX24_GAIN)	// [mV / count]
+#define AUX24_DEF_GAIN        	(double)(0.084152501f)
+//#define CONST_AUX24_15BIT 	(ADC_LSB_15BIT_MV / AUX24_DEF_GAIN)	// [mV / count]
 
 
 //PV
-#define ADC_VREF_mV			(3300.0f)	
-#define ADC_RESOLUTION_15B	(32767.0f)		/* 15Bit */
+#define HV_R_HIGH				(double)(3760000.0f)    /* 3.76 MΩ	HV -> ADC */
+#define HV_R_LOW				(double)(10000.0f)      /* 10 kΩ 	HV -> ADC */
 
-#define HV_R_HIGH			(3760000.0f)    /* 3.76 MΩ	HV -> ADC */
-#define HV_R_LOW			(10000.0f)      /* 10 kΩ 	HV -> ADC */
+#define HV_DIV_RATIO			(double)((HV_R_HIGH + HV_R_LOW) / HV_R_LOW) //38.6
 
-#define HV_DIV_RATIO		((HV_R_HIGH + HV_R_LOW) / HV_R_LOW) //38.6
+#define HV_GAIN_CAL_CPV     	(double)(0.754415858f)
+#define CONST_CPV_15BIT  		(double)(ADC_LSB_15BIT_MV / HV_GAIN_CAL_CPV)	// [mV / count]
 
-#define HV_GAIN_CAL_CPV     (0.754415858f)
-#define CONST_CPV_15BIT  	(ADC_LSB_15BIT_MV / HV_GAIN_CAL_CPV)	// [mV / count]
+#define HV_GAIN_CAL_VPV     	(double)(0.747386917f)
+#define CONST_VPV_15BIT  		(double)(ADC_LSB_15BIT_MV / HV_GAIN_CAL_VPV)	// [mV / count]
 
-#define HV_GAIN_CAL_VPV     (0.747386917f)
-#define CONST_VPV_15BIT  	(ADC_LSB_15BIT_MV / HV_GAIN_CAL_VPV)	// [mV / count]
-
-#define HV_GAIN_CAL_BTMS_VPV  (0.75535342f)   // 임시값, 실측 후 수정
-#define CONST_TVPV_15BIT  	(ADC_LSB_15BIT_MV / HV_GAIN_CAL_BTMS_VPV)	// [mV / count]
+#define HV_GAIN_CAL_BTMS_VPV  	(double)(0.75535342f)   // 임시값, 실측 후 수정
+#define CONST_TVPV_15BIT  		(double)(ADC_LSB_15BIT_MV / HV_GAIN_CAL_BTMS_VPV)	// [mV / count]
 
 #define ADC15_TO_HV_Cal(adc15, gain) \
                 (ADC15_TO_HV_mV(adc15) * (gain)) // 600v : 81442.03009125 *
@@ -65,28 +62,28 @@
 
 /* ADC(15bit) → ADC input voltage (mV) */ 
 #define ADC15_TO_VADC_mV(adc15) \
-    (((float)(adc15) * ADC_VREF_mV) / ADC_RESOLUTION_15B) //600v   :  (20950 * 3300) /32767
+    (((float)(adc15) * ADC_REF_MV) / ADC_15BIT_MAX) //600v   :  (20950 * 3300) /32767
 
 /* ADC(15bit) → High Voltage (mV) */
 #define ADC15_TO_HV_mV(adc15) \
     (ADC15_TO_VADC_mV(adc15) * HV_DIV_RATIO)		//  2109.89715 * 38.6
 
-#define HV_GAIN_CAL                 (1.000f)    /* Gain correction */
-#define HV_OFFSET_CAL_mV            (0.0f)      /* Offset correction (mV) */
+#define HV_GAIN_CAL             (1.000f)    	/* Gain correction */
+#define HV_OFFSET_CAL_mV        (0.0f)      	/* Offset correction (mV) */
 
 /* ADC(15bit) → Calibrated High Voltage (mV) */
 #define ADC15_TO_HV_CAL_mV(adc15) \
     ((ADC15_TO_HV_mV(adc15) * HV_GAIN_CAL) + HV_OFFSET_CAL_mV)
 
-#define HV_OV_800V_mV               (800000.0f)
-#define HV_UV_600V_mV               (600000.0f)
+#define HV_OV_800V_mV           (800000.0f)
+#define HV_UV_600V_mV           (600000.0f)
 
-#define ADC1_CH_NUM     (u8)4
-#define ADC2_CH_NUM     (u8)3
-#define ADC3_CH_NUM     (u8)2
+#define ADC1_CH_NUM     		(u8)4
+#define ADC2_CH_NUM     		(u8)3
+#define ADC3_CH_NUM    		 	(u8)2
 
-#define ADC_AVG_COUNT   (u8)8
-#define ADC_BUF_SIZE    (u8)(((u8)8 * ADC_AVG_COUNT) + (u8)1 )
+#define ADC_AVG_COUNT   		(u8)8
+#define ADC_BUF_SIZE    		(u8)(((u8)8 * ADC_AVG_COUNT) + (u8)1 )
 
 /* Exported macro ----------------------------------------------------------------------------------*/
 /* Exported typedef --------------------------------------------------------------------------------*/
@@ -124,10 +121,18 @@ typedef enum{
 /* Private macro ----------------------------------------------------------------------------------*/
 /* Private typedef --------------------------------------------------------------------------------*/
 typedef struct{
-	u16 supp3v;
-	u16 supp5v;
-	u16 supp13v;
-	u16 supp24v;
+	u16 ax_3v;
+	u16 ax_5v;
+	u16 ax_13v;
+	u16 ax_24v;
+
+	u16 cal_ax_3v;
+	u16 cal_ax_5v;
+	u16 cal_ax_13v;
+	u16 cal_ax_24v;
+
+
+	
 	u16 s124_high;
 	u16 s124_low;
 	u16 cpv;
@@ -153,6 +158,12 @@ typedef struct{
 	u16	gain_ax_13v;
 	u16	gain_ax_5v;
 	u16	gain_ax_3v;
+
+	u16	center_ax_24v;
+	u16	center_ax_13v;
+	u16	center_ax_5v;
+	u16	center_ax_3v;
+
 
 	u16	setgain_pv_in;
 	u16	setgain_pv_ou;

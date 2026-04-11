@@ -198,19 +198,19 @@ void Can_Tx_Supply_LowV(void)
 	u32	idx 	  	= (u32)(0x17u);
 	u16	tmp			= 0;
 
-	tmp = g_sAdcData.supp3v;
+	tmp = g_sAdcData.ax_3v;
 	txdat[0] = (u8)(tmp & 0xff);
 	txdat[1] = (u8)(tmp >> 8) & 0xff;
 
-	tmp = g_sAdcData.supp5v;
+	tmp = g_sAdcData.ax_5v;
 	txdat[2] = (u8)(tmp & 0xff);
 	txdat[3] = (u8)(tmp >> 8) & 0xff;
 
-	tmp = g_sAdcData.supp13v;
+	tmp = g_sAdcData.ax_13v;
 	txdat[4] = (u8)(tmp & 0xff);
 	txdat[5] = (u8)(tmp >> 8) & 0xff;
 
-	tmp = g_sAdcData.supp24v;
+	tmp = g_sAdcData.ax_24v;
 	txdat[6] = (u8)(tmp & 0xff);
 	txdat[7]= (u8)(tmp >> 8) & 0xff;
 	
@@ -517,14 +517,6 @@ void Can_Tx_SM_Timer(u8 u8Pos)
 	Can_TxFifo(Can_Extended_Type, idx, (u8*)&txdat, McuCan_Ext_Type);
 }
 
-
-
-
-
-
-
-
-
 void Can_Proc(void)
 {
 #ifdef CAN_BUF_UPATE    //2025-12-02   jkpark  Can Buffer 관련 수정.
@@ -587,6 +579,58 @@ void Can_Proc(void)
 }
 
 /* ================================================================
+ * CAN_Tx_GainValues
+ * ------------------------------------------------------------------
+ * fifo 버퍼에 직접 추가.
+ * ================================================================ */
+#if 0
+void CAN_Tx_GainValues(void)
+{
+	CAN_TxHeaderTypeDef TxHeader;
+	u8 txdat[8] = {0u};
+
+	TxHeader.RTR = CAN_RTR_DATA;
+	TxHeader.IDE = CAN_ID_STD;
+	TxHeader.StdId = 0x701u;
+	TxHeader.DLC = 8u;
+	TxHeader.TransmitGlobalTime = DISABLE;
+
+	/* ─── Frame 1 : MUX=0x01  pv_in / pv_ou / pv_bt ─────────────────── */
+	txdat[0] = 0x01u;
+	txdat[1] = (u8)(g_sAdcGain.gain_pv_in & 0xFFu);
+	txdat[2] = (u8)((g_sAdcGain.gain_pv_in >> 8) & 0xFFu);
+	txdat[3] = (u8)(g_sAdcGain.gain_pv_ou & 0xFFu);
+	txdat[4] = (u8)((g_sAdcGain.gain_pv_ou >> 8) & 0xFFu);
+	txdat[5] = (u8)(g_sAdcGain.gain_pv_bt & 0xFFu);
+	txdat[6] = (u8)((g_sAdcGain.gain_pv_bt >> 8) & 0xFFu);
+	txdat[7] = 0x00u;
+	Can_Fifo_In(&TxHeader, txdat, McuCan_Ext_Type);
+
+	/* ─── Frame 2 : MUX=0x02  ax_24v / ax_13v / ax_5v ──────────────── */
+	txdat[0] = 0x02u;
+	txdat[1] = (u8)(g_sAdcGain.gain_ax_24v & 0xFFu);
+	txdat[2] = (u8)((g_sAdcGain.gain_ax_24v >> 8) & 0xFFu);
+	txdat[3] = (u8)(g_sAdcGain.gain_ax_13v & 0xFFu);
+	txdat[4] = (u8)((g_sAdcGain.gain_ax_13v >> 8) & 0xFFu);
+	txdat[5] = (u8)(g_sAdcGain.gain_ax_5v & 0xFFu);
+	txdat[6] = (u8)((g_sAdcGain.gain_ax_5v >> 8) & 0xFFu);
+	txdat[7] = 0x00u;
+	Can_Fifo_In(&TxHeader, txdat, McuCan_Ext_Type);
+
+	/* ─── Frame 3 : MUX=0x03  ax_3v ──────────────────────────────────── */
+	txdat[0] = 0x03u;
+	txdat[1] = (u8)(g_sAdcGain.gain_ax_3v & 0xFFu);
+	txdat[2] = (u8)((g_sAdcGain.gain_ax_3v >> 8) & 0xFFu);
+	txdat[3] = 0x00u;
+	txdat[4] = 0x00u;
+	txdat[5] = 0x00u;
+	txdat[6] = 0x00u;
+	txdat[7] = 0x00u;
+	Can_Fifo_In(&TxHeader, txdat, McuCan_Ext_Type);
+}
+#endif
+
+/* ================================================================
  * Can_Independent / Can_Independent_Init
  * ------------------------------------------------------------------
  * HAL_GetTick() 기반 정확한 100ms 주기로 Can_Proc()을 호출한다.
@@ -609,4 +653,7 @@ void Can_Independent(void)
         Can_Proc();
     }
 }
+
+
+
 

@@ -61,7 +61,13 @@
       "Bash(pip show:*)",
       "Bash(where pdftoppm:*)",
       "Bash(python -c \"import win32com; print\\(''win32com available''\\)\")",
-      "Bash(where magick:*)"
+      "Bash(where magick:*)",
+      "Bash(dir /s /b \"D:\\\\1.Project\\\\MS-810P\\(Tram_Daejeon_PB\\)\")",
+      "Bash(findstr /i \"ms_adc ms_process\")",
+      "Bash(findstr /i \"ms_adc\")",
+      "Bash(dir \"D:\\\\1.Project\\\\MS-810P\\(Tram_Daejeon_PB\\)\" /b)",
+      "Bash(grep -v \"bak\\\\|Debug\\\\|\\\\.d$\\\\|\\\\.o$\\\\|\\\\.su$\")",
+      "Bash(grep -v \"bak\\\\|Bak\\\\|Debug\\\\|\\\\.d$\\\\|\\\\.o$\\\\|\\\\.su$\\\\|si4project\\\\|svn\")"
     ]
   }
 }

@@ -104,7 +104,7 @@ typedef unsigned char		BOOL;
 #define SCMD_BOOT_RTY		(0xB4U)				// Boot Retry
 */
 
-#define NSLV				(u8)(1)				// half Slave Count		18EA
+#define NSLV				(u8)(18)				// half Slave Count		18EA
 #define NSCV				(u8)(8)				// Slave Cell Count		8EA
 #define NSTH				(u8)(4)				// Slave Temp Count		3EA
 #define NSPI				(u8)(2)

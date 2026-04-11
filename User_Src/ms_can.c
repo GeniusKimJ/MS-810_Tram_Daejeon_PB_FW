@@ -777,7 +777,60 @@ msStatus_t Can_RxParser( u32 *deviceID )
 #endif //CAN_BUF_UPATE
 
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * CAN_Tx_GainValues
+ *   캘리브레이션 완료 후 현재 게인값 7개를 Standard ID 0x701 로 3프레임 송신.
+ *
+ *   Frame 1  MUX=0x01 : gain_pv_in(2B) | gain_pv_ou(2B) | gain_pv_bt(2B) | 0x00
+ *   Frame 2  MUX=0x02 : gain_ax_24v(2B)| gain_ax_13v(2B)| gain_ax_5v(2B) | 0x00
+ *   Frame 3  MUX=0x03 : gain_ax_3v(2B) | 0x00 0x00 0x00 0x00 0x00
+ *
+ *   Can_TxFifo() 는 내부에서 강제로 Extended ID 를 설정하므로,
+ *   Standard ID 를 사용하기 위해 Can_Fifo_In() 을 직접 호출한다.
+ * ───────────────────────────────────────────────────────────────────────────*/
+void CAN_Tx_GainValues(void)
+{
+	CAN_TxHeaderTypeDef TxHeader;
+	u8 txdat[CAN_DATA_SIZE];
 
+	/* Standard ID 0x701 헤더 공통 설정 */
+	TxHeader.IDE                = CAN_ID_STD;
+	TxHeader.RTR                = CAN_RTR_DATA;
+	TxHeader.StdId              = 0x701u;
+	TxHeader.ExtId              = 0u;
+	TxHeader.DLC                = 8u;
+	TxHeader.TransmitGlobalTime = DISABLE;
 
+	/* ── Frame 1: MUX=0x01 — pv_in, pv_ou, pv_bt ── */
+	txdat[0] = 0x01u;
+	txdat[1] = (u8)( g_sAdcGain.gain_pv_in        & 0xFFu);
+	txdat[2] = (u8)((g_sAdcGain.gain_pv_in  >> 8u) & 0xFFu);
+	txdat[3] = (u8)( g_sAdcGain.gain_pv_ou        & 0xFFu);
+	txdat[4] = (u8)((g_sAdcGain.gain_pv_ou  >> 8u) & 0xFFu);
+	txdat[5] = (u8)( g_sAdcGain.gain_pv_bt        & 0xFFu);
+	txdat[6] = (u8)((g_sAdcGain.gain_pv_bt  >> 8u) & 0xFFu);
+	txdat[7] = 0x00u;
+	Can_Fifo_In(&TxHeader, txdat, McuCan_Ext_Type);
 
+	/* ── Frame 2: MUX=0x02 — ax_24v, ax_13v, ax_5v ── */
+	txdat[0] = 0x02u;
+	txdat[1] = (u8)( g_sAdcGain.gain_ax_24v        & 0xFFu);
+	txdat[2] = (u8)((g_sAdcGain.gain_ax_24v >> 8u) & 0xFFu);
+	txdat[3] = (u8)( g_sAdcGain.gain_ax_13v        & 0xFFu);
+	txdat[4] = (u8)((g_sAdcGain.gain_ax_13v >> 8u) & 0xFFu);
+	txdat[5] = (u8)( g_sAdcGain.gain_ax_5v         & 0xFFu);
+	txdat[6] = (u8)((g_sAdcGain.gain_ax_5v  >> 8u) & 0xFFu);
+	txdat[7] = 0x00u;
+	Can_Fifo_In(&TxHeader, txdat, McuCan_Ext_Type);
 
+	/* ── Frame 3: MUX=0x03 — ax_3v ── */
+	txdat[0] = 0x03u;
+	txdat[1] = (u8)( g_sAdcGain.gain_ax_3v         & 0xFFu);
+	txdat[2] = (u8)((g_sAdcGain.gain_ax_3v  >> 8u) & 0xFFu);
+	txdat[3] = 0x00u;
+	txdat[4] = 0x00u;
+	txdat[5] = 0x00u;
+	txdat[6] = 0x00u;
+	txdat[7] = 0x00u;
+	Can_Fifo_In(&TxHeader, txdat, McuCan_Ext_Type);
+}
